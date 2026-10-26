@@ -1,6 +1,7 @@
-import {PROFILES,MAX_PAYLOAD,packet,modulate,joinAudio,sameBytes,sameHeader,wav} from './codec.mjs';
-import {attachCapture} from './capture.mjs';
-import {describeLocation,searchLocations,STATES} from './locations.mjs';
+import {PROFILES,MAX_PAYLOAD,packet,modulate,joinAudio,sameBytes,sameHeader,wav} from './codec.mjs?v=0.2.1';
+import {attachCapture,resumeAudioContext} from './capture.mjs?v=0.2.1';
+import {measureInput,PcmHistory} from './reception.mjs?v=0.2.1';
+import {describeLocation,searchLocations,STATES} from './locations.mjs?v=0.2.1';
 
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const utf=new TextEncoder(),textDecoder=new TextDecoder();
@@ -9,6 +10,7 @@ let mode='custom',kind='text',page='encoder',lesson='modem',payloadFile=null,voi
 let ctx=null,source=null,gain=null,playing=false,playToken=0,speechCancel=null;
 let worker=null,job=0,busy=false,listening=false,stream=null,capture=null,analyser=null,listenToken=0;
 let receptions=[],lastTransfer=null,locationRows=[],themePreference='system',toastTimer;
+let inputHistory=null,inputMetrics=null,captureStarted=0,lastSampleAt=0,lastMeterAt=0,healthTimer=null,lastSyncAt=0;
 let previewSamples=null,previewRate=12000,liveWave=null,lastPaint=0,scopeStart=0,scopeDuration=0,previewTimer;
 const bytesLabel=n=>n<1024?`${n} B`:`${(n/1024).toFixed(n%1024?1:0)} KiB`;
 const timeLabel=n=>n>=60?`${Math.floor(n/60)}m ${Math.ceil(n%60)}s`:`${n.toFixed(1)}s`;
@@ -128,7 +130,7 @@ function updatePreview(){
 $$('#message,#profile,#origin,#event,#locations,#duration,#sender,#issued,#auto-time,#attention,#speak,#announcement').forEach(n=>n.addEventListener('input',()=>{if(n.id==='auto-time')updateUTC();if(n.id==='locations')updateLocations();clearTimeout(previewTimer);previewTimer=setTimeout(updatePreview,120);}));
 $('#volume').oninput=()=>{$('#volume-value').textContent=$('#volume').value+'%';if(gain)gain.gain.value=+$('#volume').value/100;};
 
-async function audioContext(){if(!ctx){const C=window.AudioContext||window.webkitAudioContext;if(!C)throw Error('Web Audio is unavailable. Try a current Safari, Chrome, Firefox, or Edge browser.');ctx=new C({sampleRate:48000});}if(ctx.state==='suspended')await ctx.resume();return ctx;}
+async function audioContext(){if(!ctx||ctx.state==='closed'){const C=window.AudioContext||window.webkitAudioContext;if(!C)throw Error('Web Audio is unavailable. Try a current Safari, Chrome, Firefox, or Edge browser.');ctx=new C({latencyHint:'interactive'});}await resumeAudioContext(ctx);return ctx;}
 async function loadVoice(file){
   if(!file)return;if(file.size>25*1024*1024)throw Error('Choose an announcement smaller than 25 MB.');const c=await audioContext(),audio=await c.decodeAudioData(await file.arrayBuffer());if(audio.duration>90)throw Error('Keep announcements to 90 seconds or less.');
   const data=new Float32Array(Math.ceil(audio.duration*48000));for(let ch=0;ch<audio.numberOfChannels;ch++){const samples=audio.getChannelData(ch);for(let i=0;i<data.length;i++){const at=i*audio.sampleRate/48000,a=Math.floor(at),f=at-a;data[i]+=((samples[a]||0)*(1-f)+(samples[a+1]||0)*f)/audio.numberOfChannels;}}
@@ -158,14 +160,14 @@ $('#byte-character').oninput=()=>{const s=$('#byte-character').value,bytes=utf.e
 function status(message,state='ready'){$('#rx-status').textContent=message;$('#rx-dot').classList.toggle('active',state==='active');$('#rx-dot').classList.toggle('error',state==='error');}
 function setBusy(value){busy=value;for(const id of ['loopback','demo','decoder-demo','audio-file','listen'])$('#'+id).disabled=value;}
 function makeWorker(sr){
-  worker?.terminate();worker=new Worker(new URL('./receive-worker.mjs',import.meta.url),{type:'module'});const current=++job;lastTransfer=null;
+  worker?.terminate();worker=new Worker(new URL('./receive-worker.mjs?v=0.2.1',import.meta.url),{type:'module'});const current=++job;lastTransfer=null;lastSyncAt=0;$('#decode-stage').textContent='Waiting for a signal';
   $('#copy-progress').hidden=true;$('#result').hidden=true;$('#empty-result').hidden=false;
   worker.onmessage=({data})=>{
     if(data.job!==current)return;
     if(data.type==='transfer')receiveCustom(data.transfer,current);
     else if(data.type==='same-transfer')receiveSame(data.transfer,current);
     else if(data.type==='legacy')receiveLegacy(data.frame,current);
-    else if(data.type==='sync')status(`${data.profile}: signal lock. Reading header…`,'active');
+    else if(data.type==='sync'){lastSyncAt=performance.now();$('#decode-stage').textContent=`${data.profile} sync detected`;status(`${data.profile}: signal lock. Reading header…`,'active');}
     else if(data.type==='done'){
       setBusy(false);
       if(lastTransfer)status(transferStatus(lastTransfer),lastTransfer.state==='conflict'?'error':'ready');
@@ -192,12 +194,45 @@ $('#audio-file').onchange=async e=>{
 // Stop microphone tracks before releasing processing nodes, including failures
 // during initialization and permission/device changes.
 function cleanupMicrophone(){
-  listening=false;listenToken++;stream?.getTracks().forEach(t=>t.stop());stream=null;capture?.close();capture=null;analyser=null;liveWave=null;
+  listening=false;listenToken++;clearInterval(healthTimer);healthTimer=null;stream?.getTracks().forEach(t=>t.stop());stream=null;capture?.close();capture=null;analyser=null;liveWave=null;
   $('#listen-label').textContent='Start microphone';$('#listen').classList.remove('listening');$('#rx-badge').textContent='IDLE';
   $('#scope-state').textContent=playing?'TRANSMITTING':'SIGNAL PREVIEW';$('#scope-caption').textContent=playing?'OUTPUT ACTIVE':'READY';
-  $('#diag-input').textContent='Stopped';$('#diagnostic-summary').textContent='Microphone stopped';
+  $('#diag-input').textContent='Stopped';$('#diagnostic-summary').textContent='Microphone stopped';$('#diag-context').textContent=ctx?.state||'Not started';$('#restart-microphone').hidden=true;$('#input-state').textContent='Microphone stopped';
 }
-function stopListening(){if(listening)worker?.postMessage({type:'finish',job});cleanupMicrophone();status('Microphone stopped. Any missing copies are marked incomplete.');}
+function stopListening(){
+  if(listening){
+    worker?.postMessage({type:'finish',job});
+    if(lastTransfer?.state==='receiving'){
+      const incomplete={...lastTransfer,state:'incomplete'};
+      if(incomplete.protocol==='same')receiveSame(incomplete,job);else receiveCustom(incomplete,job);
+    }
+  }
+  cleanupMicrophone();status('Microphone stopped. Any missing copies are marked incomplete.');
+}
+function paintInputMetrics(samples,sampleRate){
+  const now=performance.now();lastSampleAt=now;inputHistory.push(samples);$('#save-capture').disabled=false;
+  if(now-lastMeterAt<180)return;lastMeterAt=now;inputMetrics=measureInput(samples,sampleRate);
+  const m=inputMetrics,db=Math.max(-90,Math.min(0,m.db)),quiet=m.db<-80;
+  $('#input-db').textContent=m.db<=-119?'−∞ dBFS':`${Math.round(m.db)} dBFS`;
+  $('#input-meter').setAttribute('aria-valuenow',String(Math.round(db)));$('#input-meter').classList.toggle('clipping',m.clipping);$('#input-meter-bar').style.width=`${(db+90)/90*100}%`;
+  $('#input-state').textContent=m.clipping?'Input is clipping':quiet?'Very quiet input':m.custom>.18?'Custom modem tones detected':m.same>.18?'SAME tones detected':'Microphone is hearing audio';
+  $('#input-detail').textContent=m.clipping?'Lower the Mac playback volume to reduce distortion.':quiet?'Little audio is reaching the microphone. Check playback volume and move the devices closer.':m.custom>.18?'Custom tone energy is arriving. If no header locks, try Resilient and a short message.':m.same>.18?'SAME tone energy is arriving. Waiting for complete header bursts.':'Input is active. Play a signal from the other device; ordinary speech and breath do not contain a modem packet.';
+}
+function checkCaptureHealth(){
+  if(!listening)return;const now=performance.now(),paused=ctx.state!=='running',stalled=now-(lastSampleAt||captureStarted)>3000,muted=stream?.getAudioTracks()[0]?.muted;
+  $('#diag-context').textContent=ctx.state;$('#rx-badge').textContent=paused||stalled||muted?'PAUSED':'LIVE';$('#restart-microphone').hidden=!(paused||stalled||muted);
+  if(paused||stalled||muted){
+    $('#input-state').textContent=paused?`Audio context ${ctx.state}`:muted?'Microphone muted by the system':'No microphone samples arriving';
+    $('#input-detail').textContent='Tap Restart microphone, keep this tab in the foreground, and check that no call or other app is using audio.';
+    status('Microphone capture is paused. Tap Restart microphone.','error');
+  }else if(!lastTransfer&&lastSyncAt&&now-lastSyncAt>5000){
+    $('#decode-stage').textContent='Sync seen; no complete valid packet yet';
+  }
+}
+$('#restart-microphone').onclick=()=>{stopListening();$('#listen').onclick();};
+$('#save-capture').onclick=()=>{if(!inputHistory?.length){toast('No microphone samples have arrived yet.',true);return;}download(wav(inputHistory.samples(),inputHistory.sampleRate),'signal-lab-microphone.wav','audio/wav');toast('Saved the captured microphone audio locally.');};
+window.addEventListener('visibilitychange',()=>{if(listening&&document.visibilityState==='visible')resumeAudioContext(ctx).catch(()=>checkCaptureHealth());});
+
 $('#diag-secure').textContent=window.isSecureContext?'Yes / secure context':'No / HTTPS required';$('#diag-api').textContent=navigator.mediaDevices?.getUserMedia?'Available':'Unavailable';
 $('#listen').onclick=async()=>{
   if(listening){stopListening();return;}
@@ -208,12 +243,17 @@ $('#listen').onclick=async()=>{
     status('Waiting for microphone permission…','active');const c=await audioContext();
     const input=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:false,noiseSuppression:false,autoGainControl:false,channelCount:1},video:false});
     if(token!==listenToken){input.getTracks().forEach(t=>t.stop());return;}stream=input;
-    const current=makeWorker(c.sampleRate);
-    capture=await attachCapture(c,input,samples=>{if(listening&&current===job)worker?.postMessage({type:'audio',job:current,samples},[samples.buffer]);});
+    await resumeAudioContext(c);
+    const current=makeWorker(c.sampleRate);inputHistory=new PcmHistory(c.sampleRate,30);inputMetrics=null;lastSampleAt=0;lastMeterAt=0;$('#save-capture').disabled=true;
+    capture=await attachCapture(c,input,samples=>{if(listening&&current===job){paintInputMetrics(samples,c.sampleRate);worker?.postMessage({type:'audio',job:current,samples},[samples.buffer]);}});
+    await resumeAudioContext(c);
     if(token!==listenToken){capture.close();input.getTracks().forEach(t=>t.stop());return;}
-    analyser=capture.analyser;listening=true;$('#listen-label').textContent='Stop microphone';$('#listen').classList.add('listening');$('#rx-badge').textContent='LIVE';$('#scope-state').textContent='MIC INPUT';$('#scope-caption').textContent='LISTENING';
+    analyser=capture.analyser;listening=true;captureStarted=performance.now();$('#input-monitor').hidden=false;$('#input-state').textContent='Waiting for microphone samples';healthTimer=setInterval(checkCaptureHealth,500);$('#listen-label').textContent='Stop microphone';$('#listen').classList.add('listening');$('#rx-badge').textContent='LIVE';$('#scope-state').textContent='MIC INPUT';$('#scope-caption').textContent='AUTO-SCALED INPUT';
     $('#scope-protocol').textContent='AUTO DETECT';$('#scope-rate').textContent=`${(c.sampleRate/1000).toFixed(1)} kHz`;$('#scope-frequency').textContent='1.2–2.4 kHz';
     $('#diag-engine').textContent=capture.method;$('#diag-rate').textContent=`${c.sampleRate.toLocaleString()} Hz`;$('#diag-input').textContent=input.getAudioTracks()[0]?.label||'Default microphone';$('#diagnostic-summary').textContent=capture.method;
+    $('#diag-context').textContent=c.state;
+    const settings=input.getAudioTracks()[0]?.getSettings?.()||{};
+    $('#diag-processing').textContent=[['echoCancellation','Echo'],['noiseSuppression','Noise'],['autoGainControl','AGC']].map(([key,label])=>`${label}: ${settings[key]===true?'on':settings[key]===false?'off':'not reported'}`).join(' / ');
     if(capture.workletError)$('#diag-engine').title=capture.workletError;
     input.getTracks().forEach(t=>t.addEventListener('ended',()=>{if(listening){stopListening();status('Microphone disconnected. Choose an available input and restart.','error');}}));
     status('Listening. Transmit a signal nearby; keep this tab in the foreground.','active');
@@ -240,7 +280,7 @@ function renderProgress(t){
   $('#copy-explanation').textContent=t.state==='conflict'?'Different content was received under the same transfer ID. Verification failed.':isSame?`${t.copies}/3 parsed headers match. SAME has no checksum.${t.endCopies?` End markers: ${t.endCopies}/3.`:''}`:t.legacy?'This older packet has no declared repetition information.':t.state==='verified'?t.total>1?'Every copy passed CRC-32. Metadata and original payload bytes match.':'The declared single copy passed its full-frame CRC-32 check.':t.state==='incomplete'?'At least one expected copy is missing or corrupt. Available bytes remain marked incomplete.':'The header declares the plan before the payload completes. Only full checksum-valid copies earn a check.';
 }
 function upsertReception(t,key){let item=receptions.find(r=>r.key===key);if(!item){item={key,at:new Date(),transfer:t};receptions.unshift(item);if(receptions.length>50)receptions.pop();}else item.transfer=t;$('#count').textContent=receptions.length;renderHistory();return item;}
-function showTransfer(t,item){renderProgress(t);if(t.frame){$('#empty-result').hidden=true;$('#result').hidden=false;$('#result').replaceChildren(resultCard(t,item?.at||new Date()));}status(transferStatus(t),t.state==='conflict'?'error':listening||busy?'active':'ready');}
+function showTransfer(t,item){$('#decode-stage').textContent=t.state==='verified'?'Payload verified':t.state==='incomplete'?'Incomplete copy set':t.state==='conflict'?'Copy conflict':t.frame?'Payload received; checking copies':'Transfer header read';renderProgress(t);if(t.frame){$('#empty-result').hidden=true;$('#result').hidden=false;$('#result').replaceChildren(resultCard(t,item?.at||new Date()));}status(transferStatus(t),t.state==='conflict'?'error':listening||busy?'active':'ready');}
 function receiveCustom(t,current){const value={...t,protocol:'custom'};lastTransfer=value;let item;if(t.frame)item=upsertReception(value,`${current}:${t.id}`);showTransfer(value,item);}
 function receiveSame(t,current){lastTransfer=t;const item=upsertReception(t,`${current}:${t.id}`);showTransfer(t,item);}
 function receiveLegacy(frame,current){const t={id:`legacy-${frame.crc}`,protocol:'custom',frame,total:1,received:[0],announced:[0],state:'verified',legacy:true};lastTransfer=t;const item=upsertReception(t,`${current}:${t.id}`);showTransfer(t,item);}
@@ -269,7 +309,7 @@ function drawScope(){
   const w=canvas.clientWidth,h=canvas.clientHeight;if(!w||!h)return;const dpr=window.devicePixelRatio||1;if(canvas.width!==Math.round(w*dpr)||canvas.height!==Math.round(h*dpr)){canvas.width=w*dpr;canvas.height=h*dpr;}g.setTransform(dpr,0,0,dpr,0,0);g.clearRect(0,0,w,h);
   let samples=previewSamples;if(listening&&analyser){if(!liveWave||liveWave.length!==analyser.fftSize)liveWave=new Float32Array(analyser.fftSize);analyser.getFloatTimeDomainData(liveWave);samples=liveWave;}
   g.strokeStyle='#c1f794';g.lineWidth=1;g.beginPath();
-  if(!samples?.length){g.moveTo(0,h/2);g.lineTo(w,h/2);}else if(listening){for(let x=0;x<w;x++){const at=Math.floor(x/w*samples.length),y=h/2-samples[at]*h*.45;x?g.lineTo(x,y):g.moveTo(x,y);}}else{
+  if(!samples?.length){g.moveTo(0,h/2);g.lineTo(w,h/2);}else if(listening){const displayGain=Math.min(1000,Math.max(1,.18/Math.max(inputMetrics?.rms||0,1e-5)));for(let x=0;x<w;x++){const at=Math.floor(x/w*samples.length),y=h/2-Math.max(-1,Math.min(1,samples[at]*displayGain))*h*.45;x?g.lineTo(x,y):g.moveTo(x,y);}}else{
     // A short time window exposes individual tone cycles instead of flattening
     // an entire multi-second packet into an uninformative solid envelope.
     const count=Math.min(samples.length,Math.round(previewRate*.025));

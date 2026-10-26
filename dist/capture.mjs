@@ -29,3 +29,15 @@ export async function attachCapture(context,stream,onSamples){
   const analyser=context.createAnalyser();analyser.fftSize=2048;source.connect(analyser);
   return {method,workletError,analyser,close(){if(node.port)node.port.onmessage=null;else node.onaudioprocess=null;source.disconnect();node.disconnect();mute.disconnect();analyser.disconnect();}};
 }
+
+// iOS may interrupt the audio context when microphone routing changes. Resume
+// after getUserMedia/graph setup as well as from the original user gesture.
+export async function resumeAudioContext(context,timeoutMs=3000){
+  if(context.state==='closed')throw Error('Audio context closed. Restart the microphone.');
+  if(context.state==='running')return;
+  let timeout;
+  try{
+    await Promise.race([context.resume(),new Promise((_,reject)=>{timeout=setTimeout(()=>reject(Error('Audio is paused by the browser. Tap Restart microphone and keep this tab open.')),timeoutMs);})]);
+  }finally{clearTimeout(timeout);}
+  if(context.state&&context.state!=='running')throw Error('Audio is still '+context.state+'. Tap Restart microphone.');
+}

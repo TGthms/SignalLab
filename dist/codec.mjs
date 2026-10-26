@@ -6,6 +6,9 @@ export const PROFILES = {
   same: { name: 'SAME', baud: 1 / .00192, zero: 1562.5, one: 4 / .00192 }
 };
 export const MAX_PAYLOAD = 8192;
+// Microphone signals can be tens of dB below generated WAV levels. Keep the
+// acquisition/clock floor near numerical silence; CRC and grammar validate data.
+const MIN_TONE_POWER = 1e-9;
 const enc = new TextEncoder();
 const dec = new TextDecoder('utf-8', { fatal: true });
 export function crc32(bytes) {
@@ -99,7 +102,7 @@ class Demodulator {
         if(k===0)p0=re*re+im*im;else p1=re*re+im*im;
       }
       const bit=p1>p0?1:0,power=(p0+p1)/(this.n*this.n),confidence=(p1-p0)/(p1+p0+1e-15);
-      if(power>.00004&&this.previousPower>.00004&&confidence*this.previousConfidence<0){
+      if(power>MIN_TONE_POWER&&this.previousPower>MIN_TONE_POWER&&confidence*this.previousConfidence<0){
         const crossing=this.tick-1-this.previousConfidence/(confidence-this.previousConfidence);
         for(const t of this.track)if(t.bytes){
           // A tone transition locates a bit boundary. Move the sampling clock
@@ -155,7 +158,7 @@ class Demodulator {
       }
       return;
     }
-    if(power<.00004)return;
+    if(power<MIN_TONE_POWER)return;
     const custom=0xca328242; // bit-reversed S L A B
     const same=0x5ac25ac2; // bit-reversed Z C Z C
     const eom=0x72727272;

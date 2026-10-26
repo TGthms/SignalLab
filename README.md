@@ -19,6 +19,7 @@ For a one-device experiment, use **Run a demo** or the encoder's **Test in decod
 - **SAME studies:** actual SAME modulation, editable header fields, three repeated headers/end bursts, optional attention signal, attached announcement audio, and browser speech during live playback.
 - **Local educational lookup:** a bundled NOAA SAME directory names geographic areas and explains PSSCCC, FIPS state/county identifiers, and locally defined county partitions.
 - **Learn:** interactive bit tones, a UTF-8 byte inspector, annotated SAME headers, verification explanations, and reception tips.
+- **Input diagnostics:** real dBFS level, tone-energy detection, auto-scaled waveform, paused-capture recovery, and a local WAV export of the last 30 seconds. The capture history is bounded and is never uploaded.
 - **Receive log:** in-memory results from the current tab.
 
 ## Run locally
@@ -35,6 +36,8 @@ Opening `dist/index.html` directly from disk is unsupported: ES modules and work
 
 ## Microphone capture
 
+The decoder accepts quiet microphone-level tones; acquisition is not gated at generated-WAV amplitude. The scope automatically scales quiet input for visibility, while the level meter reports the original RMS amplitude.
+
 AudioWorklet capture is loaded from bundled code through a Blob URL, avoiding a separate worklet-script download. If the host blocks AudioWorklet, the app uses a ScriptProcessor compatibility path when available. Diagnostics show the secure-origin status, microphone API, capture engine, sample rate, and selected input. Microphone input is not monitored through speakers.
 
 Embedded browsers can impose additional permission or audio restrictions. Open the live HTTPS app in a current Safari, Chrome, Firefox, or Edge browser if necessary. Hardware, noise, speaker distortion, and room echoes still affect physical reception; automated waveform tests cannot certify every device or room.
@@ -48,6 +51,7 @@ node tests/codec.test.mjs
 node tests/transfers.test.mjs
 node tests/locations.test.mjs
 node tests/capture.test.mjs
+node tests/acoustic.test.mjs
 ```
 
 Tests cover noisy unaligned transfers at 44.1/48 kHz; UTF-8 and binary round trips; checksum failure; 8 KiB transfers at ±0.1% clock drift; header-first repeat plans; independent copy counts; missing, corrupt, and conflicting copies; live timeout; SAME physical-burst counting; geographic lookup; actual worklet processor batching; capture fallback; and cleanup.

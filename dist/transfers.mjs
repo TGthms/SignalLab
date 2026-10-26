@@ -1,4 +1,4 @@
-import {crc32,PROFILES} from './codec.mjs';
+import {crc32,PROFILES} from './codec.mjs?v=0.2.1';
 
 // Repetition is part of the wire protocol, not a timer or a UI assumption.
 export class TransferTracker {

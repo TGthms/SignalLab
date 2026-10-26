@@ -1,5 +1,5 @@
-import {Receiver} from './codec.mjs';
-import {TransferTracker,SameTracker} from './transfers.mjs';
+import {Receiver} from './codec.mjs?v=0.2.1';
+import {TransferTracker,SameTracker} from './transfers.mjs?v=0.2.1';
 let receiver,tracker,same,job=0,samplesProcessed=0,sampleRate=48000;
 self.onmessage=({data})=>{
   if(data.type==='init'){

@@ -20,3 +20,12 @@ const normal=await attachCapture(context(),{},samples=>output.push(samples));ass
 const fallback=await attachCapture(context(true),{},samples=>output.push(samples));assert.equal(fallback.method,'Compatibility capture');assert.equal(fallback.workletError,'module blocked');
 const original=new Float32Array([.1,.2,.3]);lastProcessor.onaudioprocess({inputBuffer:{getChannelData:()=>original}});assert.deepEqual(output[0],original);assert.notEqual(output[0],original);fallback.close();assert(lastProcessor.closed);assert.equal(lastProcessor.onaudioprocess,null);
 console.log('PASS capture initialization, blocked-module fallback, copied samples and cleanup');
+const {resumeAudioContext}=await import('../dist/capture.mjs');
+for(const initial of ['suspended','interrupted']){
+  const context={state:initial,async resume(){this.state='running';}};
+  await resumeAudioContext(context);assert.equal(context.state,'running');
+}
+await resumeAudioContext({state:'running',resume(){throw Error('Already running');}});
+await assert.rejects(resumeAudioContext({state:'closed'}),/closed/);
+await assert.rejects(resumeAudioContext({state:'interrupted',resume:()=>new Promise(()=>{})},5),/paused/);
+console.log('PASS suspended/interrupted audio recovery, closed context and stalled-resume timeout');
