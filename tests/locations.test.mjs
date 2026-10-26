@@ -1,0 +1,10 @@
+import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
+import {describeLocation,searchLocations} from '../dist/locations.mjs';
+const {rows}=JSON.parse(readFileSync(new URL('../dist/data/locations.json',import.meta.url)));
+assert(rows.length>3000);
+const la=describeLocation('006037',rows);assert.equal(la.name,'Los Angeles');assert.equal(la.state,'California');assert.equal(la.stateCode,'06');assert.equal(la.countyCode,'037');assert.equal(la.partitionName,'All / unspecified portions');
+const p=describeLocation('906037',rows);assert.equal(p.partitionName,'Southeast');assert.equal(p.name,'Los Angeles');assert.equal(p.exact,false);
+assert.equal(describeLocation('00603',rows),null);assert.equal(describeLocation('999999',rows).name,null);
+assert(searchLocations('Los Angeles',rows).some(r=>r[0]==='006037'));assert(searchLocations('California',rows).length);assert(searchLocations('zzzzzz',rows).length===0);
+console.log('PASS NOAA place lookup, geographic code breakdown, partition labels, unknown codes and search');

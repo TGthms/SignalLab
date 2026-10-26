@@ -1,0 +1,87 @@
+# Signal Lab
+
+A compact browser app for sending data through sound and learning how audio modems work. Includes an EAS / SAME study mode.
+
+**Live app:** https://tgthms.github.io/SignalLab/
+
+**Repository:** https://github.com/TGthms/SignalLab
+
+## Use it
+
+Choose **Encoder** to compose text, emoji, JSON, or a small file and turn it into audio. Choose **Decoder** on another device, start the microphone, then transmit. Both devices can use the same live app. No pairing or account is required. Start with a short message in a quiet room.
+
+For a one-device experiment, use **Run a demo** or the encoder's **Test in decoder** button (↻). These feed the actual generated audio waveform into the receiver, without microphone permission.
+
+- **Light, dark, and system themes** with a saved preference.
+- **Three modem profiles:** Resilient (100 bit/s), Balanced (300 bit/s), Fast (600 bit/s).
+- **Declared repetition:** 1×, 2×, or 3×. The checksummed opening header declares a transfer ID, total copies, and copy index before the payload arrives. Each full copy must pass CRC-32. The receiver compares metadata and original payload bytes, counting only distinct indices. Missing copies remain incomplete; differing copies produce a conflict.
+- **WAV export and recording import**, plus original-byte payload downloads. Files are limited to 8 KiB; recordings to five minutes / 50 MB.
+- **SAME studies:** actual SAME modulation, editable header fields, three repeated headers/end bursts, optional attention signal, attached announcement audio, and browser speech during live playback.
+- **Local educational lookup:** a bundled NOAA SAME directory names geographic areas and explains PSSCCC, FIPS state/county identifiers, and locally defined county partitions.
+- **Learn:** interactive bit tones, a UTF-8 byte inspector, annotated SAME headers, verification explanations, and reception tips.
+- **Receive log:** in-memory results from the current tab.
+
+## Run locally
+
+Python 3 is required:
+
+```sh
+python3 serve.py
+```
+
+The browser opens at http://127.0.0.1:5194/. On macOS, you can also double-click **Start Signal Lab.command**. Keep the terminal running while using the local app. Press Control-C to stop it. If the port is busy, run `python3 serve.py --port 5195`.
+
+Opening `dist/index.html` directly from disk is unsupported: ES modules and workers need an HTTP origin. Microphone access requires HTTPS or localhost and browser permission.
+
+## Microphone capture
+
+AudioWorklet capture is loaded from bundled code through a Blob URL, avoiding a separate worklet-script download. If the host blocks AudioWorklet, the app uses a ScriptProcessor compatibility path when available. Diagnostics show the secure-origin status, microphone API, capture engine, sample rate, and selected input. Microphone input is not monitored through speakers.
+
+Embedded browsers can impose additional permission or audio restrictions. Open the live HTTPS app in a current Safari, Chrome, Firefox, or Edge browser if necessary. Hardware, noise, speaker distortion, and room echoes still affect physical reception; automated waveform tests cannot certify every device or room.
+
+## Development and checks
+
+No build step or npm dependencies are needed. Node.js 24 runs the signal-level tests:
+
+```sh
+node tests/codec.test.mjs
+node tests/transfers.test.mjs
+node tests/locations.test.mjs
+node tests/capture.test.mjs
+```
+
+Tests cover noisy unaligned transfers at 44.1/48 kHz; UTF-8 and binary round trips; checksum failure; 8 KiB transfers at ±0.1% clock drift; header-first repeat plans; independent copy counts; missing, corrupt, and conflicting copies; live timeout; SAME physical-burst counting; geographic lookup; actual worklet processor batching; capture fallback; and cleanup.
+
+GitHub Actions runs these checks before deploying `dist/` to GitHub Pages. Pushes to `main` publish the HTTPS app. No secrets or server services are required.
+
+## Limits
+
+Custom data uses Signal Lab protocol v2; v1 packets can still be decoded, with a legacy indicator because they do not declare a repetition plan. There is no encryption, sender authentication, forward error correction, automatic acknowledgement, or retransmission. CRC-32 checks accidental corruption; it is not an authenticity check.
+
+SAME is a study implementation, not certified emergency alert equipment. It compares distinct complete parsed headers and counts repeated end markers. It does not reconstruct partially corrupt SAME headers by bitwise majority or transcribe speech. SAME's fixed three-burst format is preserved; custom repetition fields are never inserted into SAME audio.
+
+Browser speech is live playback only. Attach recorded audio (up to 90 seconds) to include an announcement in WAV exports. Large payloads take minutes. Imported recordings and microphone audio stay on the device. Received data is displayed as text or offered for download; it is not automatically executed. Receptions are cleared on reload.
+
+The NOAA location directory is a dated snapshot and includes legacy entries. Names are presented as NOAA lists them, with state names expanded; current coverage and partition definitions should be checked against NOAA's live tables. A six-digit format alone does not establish that a code is currently assigned.
+
+## Layout
+
+- `dist/app.mjs`: application state, playback, reception UI, themes, and education.
+- `dist/codec.mjs`: modulation, streaming demodulation, CRC, and framing.
+- `dist/transfers.mjs`: custom repetition verification and SAME burst grouping.
+- `dist/receive-worker.mjs`: decoding outside the main thread.
+- `dist/capture.mjs`: bundled worklet and compatibility capture.
+- `dist/locations.mjs`, `dist/data/`: local NOAA place lookup.
+- `tests/`: signal, transfer, geographic, and capture tests.
+- `.github/workflows/pages.yml`: check and deployment workflow.
+- `PROTOCOL.md`: custom wire format.
+
+## References
+
+- [NOAA: SAME location-code directory](https://www.weather.gov/source/nwr/SameCode.txt)
+- [NOAA: using SAME codes](https://www.weather.gov/nwr/usingsame)
+- [NOAA: county partitions](https://www.weather.gov/dsb/nwr_sameenz)
+- [NOAA NWSI 10-1712 (archived, 2005)](https://www.weather.gov/media/directives/010_pdfs_archived/pd01017012a.pdf)
+- [MDN: microphone capture](https://developer.mozilla.org/en-US/docs/Web/API/MediaDevices/getUserMedia)
+
+The preserved `.openai/hosting.json` records an earlier, unavailable Sites registration. Active hosting is GitHub Pages; that Sites identity is not used by the deployment workflow.

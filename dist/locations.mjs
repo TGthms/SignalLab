@@ -1,0 +1,9 @@
+export const STATES={AL:'Alabama',AK:'Alaska',AZ:'Arizona',AR:'Arkansas',CA:'California',CO:'Colorado',CT:'Connecticut',DE:'Delaware',DC:'District of Columbia',FL:'Florida',GA:'Georgia',HI:'Hawaii',ID:'Idaho',IL:'Illinois',IN:'Indiana',IA:'Iowa',KS:'Kansas',KY:'Kentucky',LA:'Louisiana',ME:'Maine',MD:'Maryland',MA:'Massachusetts',MI:'Michigan',MN:'Minnesota',MS:'Mississippi',MO:'Missouri',MT:'Montana',NE:'Nebraska',NV:'Nevada',NH:'New Hampshire',NJ:'New Jersey',NM:'New Mexico',NY:'New York',NC:'North Carolina',ND:'North Dakota',OH:'Ohio',OK:'Oklahoma',OR:'Oregon',PA:'Pennsylvania',RI:'Rhode Island',SC:'South Carolina',SD:'South Dakota',TN:'Tennessee',TX:'Texas',UT:'Utah',VT:'Vermont',VA:'Virginia',WA:'Washington',WV:'West Virginia',WI:'Wisconsin',WY:'Wyoming',AS:'American Samoa',GU:'Guam',MP:'Northern Mariana Islands',PR:'Puerto Rico',VI:'U.S. Virgin Islands'};
+export const PARTITIONS=['All / unspecified portions','Northwest','North','Northeast','West','Central','East','Southwest','South','Southeast'];
+export function describeLocation(code,rows){
+  if(!/^\d{6}$/.test(code))return null;
+  const exact=rows.find(r=>r[0]===code),base=rows.find(r=>r[0]==='0'+code.slice(1)),row=exact||base;
+  const stateRow=row||rows.find(r=>r[0].slice(1,3)===code.slice(1,3));
+  return {code,partition:code[0],stateCode:code.slice(1,3),countyCode:code.slice(3),partitionName:PARTITIONS[+code[0]],name:row?.[1]||null,state:STATES[stateRow?.[2]]||stateRow?.[2]||null,exact:!!exact,label:row?`${row[1]}, ${STATES[row[2]]||row[2]}`:'Name not found in bundled NOAA directory'};
+}
+export function searchLocations(query,rows){const q=query.trim().toLowerCase();if(q.length<2)return [];return rows.filter(([code,name,abbr])=>`${code} ${name} ${abbr} ${STATES[abbr]||''}`.toLowerCase().includes(q)).slice(0,12);}

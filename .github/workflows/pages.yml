@@ -1,0 +1,45 @@
+name: Test and deploy Signal Lab
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: signal-lab-pages
+  cancel-in-progress: true
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Verify modem and repetition protocol
+        run: |
+          node tests/codec.test.mjs
+          node tests/transfers.test.mjs
+          node tests/locations.test.mjs
+          node tests/capture.test.mjs
+          node --check dist/app.mjs
+          node --check dist/receive-worker.mjs
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+      - name: Upload static app
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+  deploy:
+    needs: test
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy HTTPS app
+        id: deployment
+        uses: actions/deploy-pages@v4
