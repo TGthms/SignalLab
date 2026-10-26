@@ -41,7 +41,7 @@ Embedded browsers can impose additional permission or audio restrictions. Open t
 
 ## Development and checks
 
-No build step or npm dependencies are needed. Node.js 24 runs the signal-level tests:
+No build step or npm dependencies are needed. `npm start` launches the local Python server; `npm test` runs all checks below. Node.js 24 is used in CI:
 
 ```sh
 node tests/codec.test.mjs
