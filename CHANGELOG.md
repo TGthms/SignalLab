@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Confirm before enabling the optional EAS attention signal and identify it in the playback warning.
+
 - Ask for confirmation before EAS tone playback, with a silent-test alternative and contextual safety guidance.
 
 - Publish the privacy notice and clarify that the former draft terms are use and safety guidelines.

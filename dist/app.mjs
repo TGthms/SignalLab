@@ -141,6 +141,17 @@ function updatePreview(){
   if(!playing&&!listening)drawScope();
 }
 $$('#morse-message,#morse-wpm,#message,#profile,#origin,#event,#locations,#duration,#sender,#issued,#auto-time,#attention,#speak,#announcement').forEach(n=>n.addEventListener('input',()=>{if(n.id==='morse-wpm'&&!listening){$('#morse-rx-wpm').value=n.value;updateReceiverSettings();}if(n.id==='auto-time')updateUTC();if(n.id==='locations')updateLocations();clearTimeout(previewTimer);previewTimer=setTimeout(updatePreview,120);}));
+// Selecting the signal must not play it; only an explicit confirmation enables it.
+$('#attention').onchange=()=>{
+  if(!$('#attention').checked)return;
+  $('#attention').checked=false;
+  const dialog=$('#eas-attention-dialog');
+  if(typeof dialog.showModal!=='function'){toast('This browser cannot show the attention signal warning. The signal remains off.',true);return;}
+  if(!dialog.open)dialog.showModal();
+};
+$('#eas-attention-cancel').onclick=()=>$('#eas-attention-dialog').close();
+$('#eas-attention-confirm').onclick=()=>{const dialog=$('#eas-attention-dialog');if(!dialog.open)return;dialog.close();if(mode==='same'){$('#attention').checked=true;updatePreview();}};
+
 
 function newAudioContext(){const C=window.AudioContext||window.webkitAudioContext;if(!C)throw Error('Web Audio is unavailable in this browser.');return new C({latencyHint:'interactive'});}
 async function microphoneContext(){await micClosing;setAudioSession('play-and-record');micCtx=newAudioContext();await resumeAudioContext(micCtx);return micCtx;}
@@ -228,6 +239,7 @@ $('#play').onclick=()=>{
   if(mode==='same'){
     const dialog=$('#eas-play-dialog');
     if(dialog.open)return;
+    const hasAttention=$('#attention').checked;$('#eas-dialog-attention').hidden=!hasAttention;dialog.setAttribute('aria-describedby',hasAttention?'eas-dialog-description eas-dialog-attention eas-dialog-legal':'eas-dialog-description eas-dialog-legal');
     if(typeof dialog.showModal!=='function'){toast('This browser cannot show the EAS safety confirmation. Use the silent decoder test or a current browser.',true);return;}
     dialog.showModal();
     return;
@@ -238,7 +250,7 @@ $('#eas-play-cancel').onclick=()=>$('#eas-play-dialog').close();
 $('#eas-play-confirm').onclick=()=>{const dialog=$('#eas-play-dialog');if(!dialog.open)return;dialog.close();if(mode==='same'&&!playing)startPlayback();};
 $('#cancel-export').onclick=()=>{exportCancelled=true;$('#export-status').textContent='Cancelling WAV export…';};
 $('#export').onclick=async()=>{if(mode==='same'){toast('EAS WAV export is unavailable. Use the silent decoder test to study the signal.',true);return;}if(exporting)return;exporting=true;exportCancelled=false;$('#export').disabled=true;try{if(mode==='custom'){$('#export-status').hidden=false;$('#cancel-export').hidden=false;$('#export-status').textContent=window.showSaveFilePicker?'Preparing WAV…':'Preparing WAV in memory; large files may take time.';await exportCustom(customPlan());toast('WAV exported.');}else{const signal=buildSignal();download(wav(signal.samples,signal.sr),'signal-lab-morse.wav','audio/wav');toast('WAV exported.');}}catch(e){if(e.name!=='AbortError')toast(err(e),true);}finally{exporting=false;$('#export').disabled=false;$('#export-status').hidden=true;$('#cancel-export').hidden=true;}};
-window.addEventListener('keydown',e=>{if(e.code==='Space'&&!e.repeat&&!$('#eas-play-dialog').open&&page==='encoder'&&!['INPUT','TEXTAREA','SELECT','BUTTON','SUMMARY'].includes(document.activeElement?.tagName)&&!document.activeElement?.isContentEditable){e.preventDefault();$('#play').click();}});
+window.addEventListener('keydown',e=>{if(e.code==='Space'&&!e.repeat&&!$('#eas-play-dialog').open&&!$('#eas-attention-dialog').open&&page==='encoder'&&!['INPUT','TEXTAREA','SELECT','BUTTON','SUMMARY'].includes(document.activeElement?.tagName)&&!document.activeElement?.isContentEditable){e.preventDefault();$('#play').click();}});
 for(const [id,freq]of [['bit-zero',1200],['bit-one',2400]])$(('#'+id)).onclick=async()=>{try{setAudioSession(listening?'play-and-record':'playback');const c=await audioContext(),o=c.createOscillator(),v=c.createGain();o.frequency.value=freq;o.connect(v);v.connect(c.destination);v.gain.setValueAtTime(0,c.currentTime);v.gain.linearRampToValueAtTime(.12,c.currentTime+.02);v.gain.setValueAtTime(.12,c.currentTime+.45);v.gain.linearRampToValueAtTime(0,c.currentTime+.5);o.start();o.stop(c.currentTime+.51);o.onended=()=>{o.disconnect();v.disconnect();if(!playing)releaseAudioSession();};}catch(e){if(!playing)releaseAudioSession();toast(err(e),true);}};
 $('#byte-character').oninput=()=>{const s=$('#byte-character').value,bytes=utf.encode(s);$('#byte-output').textContent=bytes.length?Array.from(bytes,b=>`${b.toString(16).padStart(2,'0').toUpperCase()} → ${b.toString(2).padStart(8,'0')}`).join(' / '):'Type a character to see its UTF-8 bytes.';};
 
