@@ -1,0 +1,179 @@
+/* A quieter, more legible workbench. Technical detail stays available without
+   competing with the message or the receiver's current result. */
+:root{--bg:#f2f0ea;--surface:#fffefa;--surface2:#f6f5ef;--surface3:#e9e8df;--text:#272a24;--muted:#575e53;--faint:#6d7568;--line:#d5d8ce;--line2:#e4e6dc;--accent:#a64025;--accent-hover:#87331d;--accent-wash:#f8e9e1;--good:#2e694a;--sans:Inter,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;--shadow:none}
+
+:root[data-theme=dark]{--bg:#171b19;--surface:#202622;--surface2:#1a201c;--surface3:#303a32;--text:#edf0e8;--muted:#b4bfb1;--faint:#9aa899;--line:#3c4940;--line2:#303d34;--accent:#f29b75;--accent-hover:#ffb596;--accent-wash:#443126;--good:#c1e5ac;--good-wash:#263a2b;--scope:#18231c;--trace:#c8ecac}
+
+body{font-size:15px;line-height:1.55}
+.appbar{height:72px}
+.brand strong{font-size:18px}
+.app-version,.repo-link,.theme-control select{font-size:11px}
+.mode-nav{margin:22px 0 26px}
+.nav{font-size:14px;padding:12px 16px 15px}
+.page-heading{margin-bottom:22px}
+.page-heading h1{font-size:30px;letter-spacing:-.9px}
+.heading-dot{display:none}
+.page-heading p{font-size:15px;margin-top:7px}
+.quiet-button{font:13px var(--sans);min-height:44px;padding:10px 14px}
+.panel{border-radius:10px;padding:28px}
+.getting-started{display:flex;align-items:center;justify-content:space-between;gap:18px;padding:0 2px 20px}
+.getting-started p{font-size:14px;line-height:1.55;color:var(--muted);margin:0;max-width:530px}
+.getting-started strong{color:var(--text);font-weight:650}
+.getting-started .text-button{white-space:nowrap}
+.protocol-switch{gap:8px;margin-bottom:24px;padding-bottom:20px}
+.protocol-switch button,.payload-tabs button{font:13px var(--sans);min-height:40px;padding:8px 12px;color:var(--muted)}
+.protocol-switch .selected{font-weight:650}
+.field-heading{margin-bottom:10px}
+label,legend{font-size:14px;font-weight:600}
+textarea{font:15px/1.7 var(--mono);min-height:145px;padding:16px}
+.editor-foot{font:12px var(--sans);padding:9px 13px}
+.field-row{margin-top:18px}
+.field-row>label,.full-label{gap:8px}
+select,input[type=text],input:not([type]),input[type=search],input[type=datetime-local]{font-size:14px;min-height:44px;height:auto;padding:10px 12px}
+.field-help,.inline-note p{font-size:13px;line-height:1.6}
+.inline-note{padding:14px}
+.repeat-control{height:44px}
+.repeat-control button{font:14px var(--sans)}
+.help-button{width:28px;height:28px;font:14px var(--sans)}
+.transmission-settings,.receiver-settings{margin-top:20px;border-top:1px solid var(--line);padding:15px 0 0}
+.transmission-settings summary,.receiver-settings summary{font-size:14px;font-weight:600;color:var(--text);min-height:32px}
+.transmission-settings summary span,.receiver-settings summary span{font-size:12px;font-weight:400;color:var(--muted);float:right}
+.transmission-settings[open] summary,.receiver-settings[open] summary{margin-bottom:8px}
+.output-strip{margin-top:20px;padding:16px 0}
+.output-strip>div>span,.raw-header span{font:12px var(--sans);letter-spacing:0;color:var(--muted)}
+.output-strip strong{font:15px var(--mono)}
+.transmit-actions{flex-wrap:wrap}
+.primary,.secondary,.icon-button{min-height:48px;font-size:14px;font-weight:600;padding:12px 16px}
+.transmit-actions .primary{flex:1 1 40%}
+.transmit-actions .secondary{flex:1 1 24%}
+.transmit-actions .loopback{flex:1 1 auto}
+.below-panel{font:12px var(--sans);color:var(--muted);text-align:left}
+.text-button{font:13px/1.5 var(--sans);font-weight:600}
+.scope-panel{border-radius:10px}
+.scope-top,.scope-bottom,.scope-frequency>span,.scope-frequency strong,.scope-channel{font:11px var(--sans);letter-spacing:0}
+.scope-axis{font:9px var(--sans);letter-spacing:0}
+.rail-card{padding:20px;border-radius:10px}
+.rail-heading h2{font-size:15px;font-weight:650}
+.rail-card>p{font-size:14px;line-height:1.6}
+.rail-card .text-button{font-size:13px}
+.local-indicator,.keyboard-hint,.keyboard-hint>span{font:12px/1.5 var(--sans)}
+kbd{font:11px var(--sans)}
+.instrument-rail{padding-top:92px}
+.same-intro p,.mode-intro{font-size:14px;line-height:1.6;color:var(--muted)}
+.study-context{padding:16px 18px;background:var(--accent-wash);border-left:3px solid var(--accent);border-radius:3px}
+.study-context strong{font-size:14px}
+.study-context p{font-size:13px;line-height:1.55;color:var(--muted);margin:5px 0 0}
+.tag{font:12px var(--sans);letter-spacing:0}
+.search-label,.location-chip-top,.location-chip p,.location-chip .code-parts,.search-results button,.search-results code{font-size:13px}
+.location-section .text-button{font-size:13px}
+.location-chip code{font-size:13px}
+.check-row{font-size:13px}
+.check-row input{width:18px;height:18px}
+.raw-header code{font-size:13px}
+.advanced summary,summary{font-size:14px}
+.attachment{font:13px var(--sans)}
+.rx-status{font-size:14px}
+.empty-result strong{font-size:18px;font-weight:600}
+.empty-result p{font-size:14px}
+.empty-result .text-button,.receiver-foot .text-button{font-size:13px}
+.receiver-foot>span{font:12px var(--sans)}
+.receiver-settings{margin-bottom:0}
+.receiver-tuning label,.morse-receive-speed label{font-size:13px}
+.receiver-tuning p,.morse-receive-speed+p{font-size:13px}
+.input-monitor-head strong,.input-monitor>p{font-size:13px}
+.input-monitor-head>span,.input-stage>span,.input-stage>strong{font-size:12px}
+.copy-progress{margin-top:16px}
+.copy-progress-heading,.copy-slot,.copy-progress p{font-size:13px}
+.copy-slot small{font-size:12px}
+.copy-progress-heading strong{font-size:14px}
+#result{padding:22px}
+.result-heading strong,.result-heading time,.result-meta{font:12px/1.5 var(--sans);letter-spacing:0}
+.result-text{font:15px/1.7 var(--mono)}
+.result-actions button{font-size:13px}
+.decoded-fields>div{font-size:14px}
+.decoded-fields span{font:12px var(--sans);letter-spacing:0}
+.lesson-tabs button{font:13px var(--sans);min-height:44px}
+.lesson h2{font-size:26px;margin-top:0}
+.lesson h3{font-size:17px}
+.lesson p,.lesson li{font-size:15px;line-height:1.7}
+.lesson .caption,.bit-instrument span,.packet-diagram span,.source-links a{font:12px var(--sans)}
+.byte-explorer label,.byte-explorer output,.header-map dd,.header-map dt{font-size:13px}
+.morse-timing span,.morse-tone>span,.morse-tone small{font:12px/1.5 var(--sans);letter-spacing:0}
+.morse-table th{font:12px var(--sans);text-transform:none;letter-spacing:0}
+.morse-key{min-width:44px;min-height:44px}
+.diagnostic-panel summary,.diagnostic-panel p,.diagnostic-panel dt,.diagnostic-panel dd{font-size:13px}
+.diagnostic-panel summary>span{font:12px var(--sans)}
+.history-empty{font:14px var(--sans)}
+footer{font:12px var(--sans);letter-spacing:0}
+#toast{font-size:14px}
+.playback-timeline>div,.playback-timeline p{font:11px var(--sans);letter-spacing:0}
+
+@media(max-width:760px){.appbar{height:64px}
+.app-container{padding:0 20px}
+.nav{font-size:13px}
+.instrument-rail{padding:0}
+.page-heading h1{font-size:28px}
+.panel{padding:22px}
+.getting-started{align-items:flex-start;flex-direction:column;gap:8px}
+.getting-started p{font-size:14px}
+.lesson p,.lesson li{font-size:15px}
+}
+
+@media(max-width:480px){.appbar{padding:0 16px}
+.app-container{padding:0 16px}
+.repo-link,.theme-control select{font-size:11px}
+.theme-control select{width:72px}
+.nav{font-size:12px;padding:10px 8px 13px}
+.main-modes .nav>span{font-size:15px}
+.page-heading h1{font-size:27px}
+.page-heading p{font-size:14px}
+.quiet-button{font-size:12px;padding:9px}
+.panel{padding:18px}
+.protocol-switch button{font-size:13px;padding:8px 9px}
+.field-row{grid-template-columns:1fr;gap:16px}
+.field-row select,.field-row label,legend{font-size:14px}
+.output-strip>div>span{font-size:12px}
+.output-strip strong{font-size:14px}
+.primary,.secondary{font-size:13px}
+.transmit-actions .primary{flex-basis:100%}
+.transmit-actions .secondary{flex-basis:42%}
+.below-panel{font-size:12px}
+.receiver-foot>span,.receiver-foot .text-button{font-size:12px}
+.copy-progress-heading,.copy-progress p,.copy-slot{font-size:12px}
+.copy-slots{flex-direction:column}
+.copy-slot{min-height:44px;justify-content:space-between}
+.copy-progress-heading strong{font-size:14px}
+.result-heading strong,.result-heading time{font-size:12px}
+.result-text{font-size:14px}
+.location-section .field-heading>label,.location-section .text-button,.location-chip-top,.location-chip code,.location-chip p{font-size:12px}
+.digit-breakdown{grid-template-columns:1fr}
+.digit-breakdown strong,.digit-breakdown p{font-size:12px!important}
+.lesson-tabs button{font-size:12px}
+.lesson h2{font-size:24px}
+.lesson p,.lesson li{font-size:14px}
+.morse-timing{grid-template-columns:1fr}
+.morse-timing span{font-size:12px}
+.morse-table th{font-size:11px}
+.source-links a,.diagnostic-panel summary,.diagnostic-panel summary>span,.diagnostic-panel dd{font-size:12px}
+.diagnostic-panel dd{max-width:63%}
+footer{font-size:11px;letter-spacing:0}
+.receiver-settings summary span,.transmission-settings summary span{float:none;display:block;margin:4px 0 0 20px}
+}
+
+.signal-limit{color:var(--accent);font-size:13px;line-height:1.5;margin:12px 0 0}
+.morse-hint{font-size:13px;color:var(--muted);line-height:1.5;margin:8px 0 0}
+.morse-hint .text-button{font-size:13px}
+
+@media(max-width:480px){.transmitter:has(#custom-fields:not([hidden])) .transmit-actions{position:sticky;bottom:8px;z-index:3;flex-wrap:nowrap;padding:8px;background:var(--surface);border:1px solid var(--line);border-radius:7px;box-shadow:0 4px 16px #0003}
+.transmit-actions .primary,.transmit-actions .secondary{flex:1 1 0;min-width:0;padding:10px 5px;font-size:12px;white-space:normal;text-align:center}
+.transmit-actions .primary{flex-grow:1.15}
+.transmit-actions .secondary svg{display:none}
+.transmit-actions .loopback{flex-grow:1.25}
+}
+
+
+.result-source{font-size:13px;color:var(--muted);margin:0 0 10px}
+.receiver-settings[open]+.morse-hint{display:none}
+@media(max-width:480px){textarea,select,input[type=text],input:not([type]),input[type=search],input[type=datetime-local],.field-row select{font-size:16px}}
+.app-layout.reading{grid-template-columns:minmax(0,780px)}
+.app-layout.reading .instrument-rail{display:none}

@@ -1,5 +1,12 @@
 # Changes
 
+## Unreleased
+
+- Simplify the send and receive journeys, keep tuning available in disclosures, and move received content ahead of verification details.
+- Preserve drafts and settings when running the demo; label generated demo and loopback results.
+- Improve typography, contrast, target sizes, mobile actions, learning-topic state, and context for SAME and Morse.
+- Cap generated transmissions at five minutes before audio allocation, with guidance for longer transfers. Extract duration planning and add browser workflow regressions.
+
 ## 0.2.4
 
 - Reset input levels, live guidance and decoder state when the microphone stops. Ignore queued sync events and keep a delayed worker completion from replacing the stopped message with recording-import advice.

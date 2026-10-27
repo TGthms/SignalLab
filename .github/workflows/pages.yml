@@ -27,8 +27,18 @@ jobs:
           node tests/session.test.mjs
           node tests/monitor.test.mjs
           node tests/morse.test.mjs
+          node tests/signal-plan.test.mjs
           node --check dist/app.mjs
           node --check dist/receive-worker.mjs
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install browser test dependencies
+        run: |
+          python -m pip install playwright==1.56.0
+          python -m playwright install --with-deps chromium
+      - name: Verify browser workflows
+        run: python tests/browser/test_workflows.py
       - name: Configure Pages
         uses: actions/configure-pages@v5
       - name: Upload static app
