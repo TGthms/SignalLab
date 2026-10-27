@@ -41,3 +41,9 @@ export async function resumeAudioContext(context,timeoutMs=3000){
   }finally{clearTimeout(timeout);}
   if(context.state&&context.state!=='running')throw Error('Audio is still '+context.state+'. Tap Restart microphone.');
 }
+
+// Explicit media intent lets supporting iOS browsers route Web Audio like media
+// rather than ambient effects governed by Ring/Silent.
+export function configureAudioSession(host,type){
+  try{if(!host?.audioSession)return 'unsupported';host.audioSession.type=type;return host.audioSession.type;}catch{return 'unavailable';}
+}

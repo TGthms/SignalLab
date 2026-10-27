@@ -29,3 +29,10 @@ await resumeAudioContext({state:'running',resume(){throw Error('Already running'
 await assert.rejects(resumeAudioContext({state:'closed'}),/closed/);
 await assert.rejects(resumeAudioContext({state:'interrupted',resume:()=>new Promise(()=>{})},5),/paused/);
 console.log('PASS suspended/interrupted audio recovery, closed context and stalled-resume timeout');
+
+const {configureAudioSession}=await import('../dist/capture.mjs');
+const host={audioSession:{type:'auto'}};
+for(const type of ['playback','play-and-record','auto']){assert.equal(configureAudioSession(host,type),type);assert.equal(host.audioSession.type,type);}
+assert.equal(configureAudioSession({},'playback'),'unsupported');
+assert.equal(configureAudioSession({get audioSession(){throw Error('Blocked');}},'playback'),'unavailable');
+console.log('PASS playback/recording session routing, release and unsupported-browser handling');

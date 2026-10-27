@@ -1,5 +1,16 @@
 # Changes
 
+## 0.2.2
+
+- Balance custom tone energies to compensate for unequal speaker/microphone frequency response; regression tests include filtered audio and echo trains.
+- Smooth custom frequency transitions over the first 10% of each bit; SAME modulation is unchanged.
+- Give each custom copy at least 1.8 seconds of alternating training tones; single-copy tests retain decoding after 1.1 seconds of missing startup audio. Live deadlines account for the longer preamble.
+- Add persistent Lower / Normal / Higher decoder sensitivity, controlling acquisition floor and guarded sync-bit tolerance. Opening-header and full-frame CRC checks remain mandatory.
+- Declare playback / play-and-record audio intent on supporting browsers and release it after use; this addresses iPhone ambient-audio behavior under Ring/Silent.
+- Wait for flowing microphone samples before showing Microphone ready.
+- Label each copy Verified, Not detected, Header only, or CRC failed so incomplete transfers explain which indices are missing.
+
+
 ## 0.2.1
 
 - Corrected an acquisition/clock-tracking floor that discarded quiet, otherwise valid custom-modem audio. Regression tests include microphone-level attenuation, ambient noise, and simulated room echoes for Balanced and Resilient profiles.

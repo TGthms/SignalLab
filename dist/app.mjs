@@ -1,7 +1,7 @@
-import {PROFILES,MAX_PAYLOAD,packet,modulate,joinAudio,sameBytes,sameHeader,wav} from './codec.mjs?v=0.2.1';
-import {attachCapture,resumeAudioContext} from './capture.mjs?v=0.2.1';
-import {measureInput,PcmHistory} from './reception.mjs?v=0.2.1';
-import {describeLocation,searchLocations,STATES} from './locations.mjs?v=0.2.1';
+import {PROFILES,MAX_PAYLOAD,customPreambleBytes,packet,modulate,joinAudio,sameBytes,sameHeader,wav} from './codec.mjs?v=0.2.2';
+import {attachCapture,resumeAudioContext,configureAudioSession} from './capture.mjs?v=0.2.2';
+import {measureInput,PcmHistory} from './reception.mjs?v=0.2.2';
+import {describeLocation,searchLocations,STATES} from './locations.mjs?v=0.2.2';
 
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const utf=new TextEncoder(),textDecoder=new TextDecoder();
@@ -10,6 +10,7 @@ let mode='custom',kind='text',page='encoder',lesson='modem',payloadFile=null,voi
 let ctx=null,source=null,gain=null,playing=false,playToken=0,speechCancel=null;
 let worker=null,job=0,busy=false,listening=false,stream=null,capture=null,analyser=null,listenToken=0;
 let receptions=[],lastTransfer=null,locationRows=[],themePreference='system',toastTimer;
+let sensitivity='normal',captureReady=false,capturedSamples=0;
 let inputHistory=null,inputMetrics=null,captureStarted=0,lastSampleAt=0,lastMeterAt=0,healthTimer=null,lastSyncAt=0;
 let previewSamples=null,previewRate=12000,liveWave=null,lastPaint=0,scopeStart=0,scopeDuration=0,previewTimer;
 const bytesLabel=n=>n<1024?`${n} B`:`${(n/1024).toFixed(n%1024?1:0)} KiB`;
@@ -94,7 +95,7 @@ function buildSignal(){
   const sr=48000;
   if(mode==='custom'){
     const {data,meta}=payload(),total=+$('#repeat').value,id=Array.from(crypto.getRandomValues(new Uint8Array(8)),b=>b.toString(16).padStart(2,'0')).join(''),profile=PROFILES[$('#profile').value];
-    const parts=Array.from({length:total},(_,index)=>modulate(packet(data,meta,{total,index,id}),profile,sr));
+    const parts=Array.from({length:total},(_,index)=>modulate(packet(data,meta,{total,index,id,preambleBytes:customPreambleBytes(profile)}),profile,sr));
     return{samples:joinAudio(parts,sr,.65),sr,total,id};
   }
   updateUTC();const header=currentHeader(),padding=Math.round(.18*sr);
@@ -114,9 +115,9 @@ function updatePreview(){
   try{
     let seconds,signalSize=size;
     if(mode==='custom'){
-      const {data,meta}=payload(),length=packet(data,meta).length;
+      const {data,meta}=payload(),length=packet(data,meta,{preambleBytes:customPreambleBytes(p)}).length;
       seconds=(length*8/p.baud+.36)*total+(total-1)*.65;
-      if(!playing&&!listening){previewSamples=modulate(packet(data.slice(0,160),meta),p,12000);previewRate=12000;}
+      if(!playing&&!listening){previewSamples=modulate(packet(data.slice(0,160),meta,{preambleBytes:customPreambleBytes(p)}),p,12000);previewRate=12000;}
     }else{
       const header=currentHeader();$('#header-preview').textContent=header;signalSize=header.length;
       const signal=buildSignal();seconds=signal.samples.length/signal.sr;if(signal.speech)seconds+=signal.speech.split(/\s+/).length/2.5;
@@ -139,7 +140,9 @@ async function loadVoice(file){
 $('#voice-file').onchange=async e=>{try{await loadVoice(e.target.files[0]);}catch(e){toast(err(e),true);}e.target.value='';};
 $('#clear-voice').onclick=()=>{voice=null;$('#voice-status').textContent='Recorded audio goes into the WAV. Browser speech is live playback only.';$('#clear-voice').hidden=true;updatePreview();};
 function setPlayUI(){ $('#play-label').textContent=playing?'Stop':'Transmit';$('#play-icon').textContent=playing?'■':'▶';if(!listening){$('#scope-state').textContent=playing?'TRANSMITTING':'SIGNAL PREVIEW';$('#scope-caption').textContent=playing?'OUTPUT ACTIVE':'READY';}}
-function stopPlayback(){playing=false;playToken++;if(source){try{source.stop();}catch{}source=null;}window.speechSynthesis?.cancel();speechCancel?.();speechCancel=null;setPlayUI();}
+function setAudioSession(type){const result=configureAudioSession(navigator,type);$('#diag-session').textContent=result;return result;}
+function releaseAudioSession(){setAudioSession(listening?'play-and-record':'auto');}
+function stopPlayback(){playing=false;playToken++;if(source){try{source.stop();}catch{}source=null;}window.speechSynthesis?.cancel();speechCancel?.();speechCancel=null;releaseAudioSession();setPlayUI();}
 async function playBuffer(samples,sr){
   const c=await audioContext();await new Promise(resolve=>{const buffer=c.createBuffer(1,samples.length,sr);buffer.copyToChannel(samples,0);const currentSource=c.createBufferSource(),currentGain=c.createGain();source=currentSource;gain=currentGain;currentSource.buffer=buffer;currentGain.gain.value=+$('#volume').value/100;currentSource.connect(currentGain);currentGain.connect(c.destination);currentSource.onended=()=>{currentSource.disconnect();currentGain.disconnect();resolve();};scopeStart=performance.now();scopeDuration=samples.length/sr;previewSamples=samples;previewRate=sr;currentSource.start();});
 }
@@ -147,20 +150,20 @@ function speak(text){return new Promise((resolve,reject)=>{if(!('speechSynthesis
 $('#play').onclick=async()=>{
   if(playing){stopPlayback();return;}
   try{if(+$('#volume').value===0){toast('Output is muted. Raise the volume slider first.');return;}
-    const signal=buildSignal();await audioContext();playing=true;const token=++playToken;setPlayUI();
+    const signal=buildSignal();setAudioSession(listening?'play-and-record':'playback');await audioContext();playing=true;const token=++playToken;setPlayUI();
     if(signal.speech){await playBuffer(signal.head,signal.sr);if(token!==playToken)return;await speak(signal.speech);if(token!==playToken)return;await playBuffer(signal.tail,signal.sr);}else await playBuffer(signal.samples,signal.sr);
-    if(token===playToken){playing=false;source=null;setPlayUI();updatePreview();}
+    if(token===playToken){playing=false;source=null;releaseAudioSession();setPlayUI();updatePreview();}
   }catch(e){stopPlayback();toast(err(e),true);}
 };
 $('#export').onclick=()=>{try{const signal=buildSignal();download(wav(signal.samples,signal.sr),mode==='same'?'signal-lab-same-study.wav':'signal-lab-message.wav','audio/wav');toast(signal.speech?'WAV saved. To include speech in the file, attach recorded audio.':'WAV exported, including the declared copy plan.');}catch(e){toast(err(e),true);}};
 window.addEventListener('keydown',e=>{if(e.code==='Space'&&!e.repeat&&page==='encoder'&&!['INPUT','TEXTAREA','SELECT','BUTTON','SUMMARY'].includes(document.activeElement?.tagName)&&!document.activeElement?.isContentEditable){e.preventDefault();$('#play').click();}});
-for(const [id,freq]of [['bit-zero',1200],['bit-one',2400]])$(('#'+id)).onclick=async()=>{try{const c=await audioContext(),o=c.createOscillator(),v=c.createGain();o.frequency.value=freq;o.connect(v);v.connect(c.destination);v.gain.setValueAtTime(0,c.currentTime);v.gain.linearRampToValueAtTime(.12,c.currentTime+.02);v.gain.setValueAtTime(.12,c.currentTime+.45);v.gain.linearRampToValueAtTime(0,c.currentTime+.5);o.start();o.stop(c.currentTime+.51);o.onended=()=>{o.disconnect();v.disconnect();};}catch(e){toast(err(e),true);}};
+for(const [id,freq]of [['bit-zero',1200],['bit-one',2400]])$(('#'+id)).onclick=async()=>{try{setAudioSession(listening?'play-and-record':'playback');const c=await audioContext(),o=c.createOscillator(),v=c.createGain();o.frequency.value=freq;o.connect(v);v.connect(c.destination);v.gain.setValueAtTime(0,c.currentTime);v.gain.linearRampToValueAtTime(.12,c.currentTime+.02);v.gain.setValueAtTime(.12,c.currentTime+.45);v.gain.linearRampToValueAtTime(0,c.currentTime+.5);o.start();o.stop(c.currentTime+.51);o.onended=()=>{o.disconnect();v.disconnect();if(!playing)releaseAudioSession();};}catch(e){if(!playing)releaseAudioSession();toast(err(e),true);}};
 $('#byte-character').oninput=()=>{const s=$('#byte-character').value,bytes=utf.encode(s);$('#byte-output').textContent=bytes.length?Array.from(bytes,b=>`${b.toString(16).padStart(2,'0').toUpperCase()} → ${b.toString(2).padStart(8,'0')}`).join(' / '):'Type a character to see its UTF-8 bytes.';};
 
 function status(message,state='ready'){$('#rx-status').textContent=message;$('#rx-dot').classList.toggle('active',state==='active');$('#rx-dot').classList.toggle('error',state==='error');}
 function setBusy(value){busy=value;for(const id of ['loopback','demo','decoder-demo','audio-file','listen'])$('#'+id).disabled=value;}
 function makeWorker(sr){
-  worker?.terminate();worker=new Worker(new URL('./receive-worker.mjs?v=0.2.1',import.meta.url),{type:'module'});const current=++job;lastTransfer=null;lastSyncAt=0;$('#decode-stage').textContent='Waiting for a signal';
+  worker?.terminate();worker=new Worker(new URL('./receive-worker.mjs?v=0.2.2',import.meta.url),{type:'module'});const current=++job;lastTransfer=null;lastSyncAt=0;$('#decode-stage').textContent='Waiting for a signal';
   $('#copy-progress').hidden=true;$('#result').hidden=true;$('#empty-result').hidden=false;
   worker.onmessage=({data})=>{
     if(data.job!==current)return;
@@ -175,8 +178,16 @@ function makeWorker(sr){
     }
   };
   worker.onerror=e=>{setBusy(false);cleanupMicrophone();status('Decoder stopped. Reload the app and try again.','error');toast(e.message||'Audio worker failed.',true);};
-  worker.postMessage({type:'init',job:current,sr});return current;
+  worker.postMessage({type:'init',job:current,sr,sensitivity});return current;
 }
+try{sensitivity=localStorage.getItem('signal-lab-sensitivity')||'normal';}catch{}
+if(!['low','normal','high'].includes(sensitivity))sensitivity='normal';
+function updateSensitivity(){
+  $('#sensitivity').value=sensitivity;
+  $('#sensitivity-help').textContent={low:'Strict sync detection for a clean signal. Useful if background sounds cause frequent false locks.',normal:'Automatic tone balancing with a small allowance for damaged sync bits. Start here.',high:'Lower detection floor and a wider sync search for weak signals. May show more false locks; checksums remain mandatory.'}[sensitivity];
+}
+$('#sensitivity').onchange=()=>{sensitivity=$('#sensitivity').value;try{localStorage.setItem('signal-lab-sensitivity',sensitivity);}catch{}updateSensitivity();worker?.postMessage({type:'sensitivity',job,sensitivity});};
+updateSensitivity();
 async function decodeSignal(samples,sr,label){
   if(listening)stopListening();setBusy(true);status(`Decoding ${label}…`,'active');const current=makeWorker(sr);showPage('decoder');
   const length=sr*2;for(let at=0;at<samples.length;at+=length){const part=samples.slice(at,at+length);worker.postMessage({type:'audio',job:current,samples:part,done:at+length>=samples.length},[part.buffer]);}
@@ -197,7 +208,7 @@ function cleanupMicrophone(){
   listening=false;listenToken++;clearInterval(healthTimer);healthTimer=null;stream?.getTracks().forEach(t=>t.stop());stream=null;capture?.close();capture=null;analyser=null;liveWave=null;
   $('#listen-label').textContent='Start microphone';$('#listen').classList.remove('listening');$('#rx-badge').textContent='IDLE';
   $('#scope-state').textContent=playing?'TRANSMITTING':'SIGNAL PREVIEW';$('#scope-caption').textContent=playing?'OUTPUT ACTIVE':'READY';
-  $('#diag-input').textContent='Stopped';$('#diagnostic-summary').textContent='Microphone stopped';$('#diag-context').textContent=ctx?.state||'Not started';$('#restart-microphone').hidden=true;$('#input-state').textContent='Microphone stopped';
+  setAudioSession(playing?'playback':'auto');$('#diag-input').textContent='Stopped';$('#diagnostic-summary').textContent='Microphone stopped';$('#diag-context').textContent=ctx?.state||'Not started';$('#restart-microphone').hidden=true;$('#input-state').textContent='Microphone stopped';
 }
 function stopListening(){
   if(listening){
@@ -210,7 +221,8 @@ function stopListening(){
   cleanupMicrophone();status('Microphone stopped. Any missing copies are marked incomplete.');
 }
 function paintInputMetrics(samples,sampleRate){
-  const now=performance.now();lastSampleAt=now;inputHistory.push(samples);$('#save-capture').disabled=false;
+  const now=performance.now();lastSampleAt=now;inputHistory.push(samples);capturedSamples+=samples.length;
+  if(!captureReady&&capturedSamples>=sampleRate*.25){captureReady=true;$('#rx-badge').textContent='LIVE';if(!lastTransfer)status('Microphone ready. Transmit now; keep this tab in the foreground.','active');}$('#save-capture').disabled=false;
   if(now-lastMeterAt<180)return;lastMeterAt=now;inputMetrics=measureInput(samples,sampleRate);
   const m=inputMetrics,db=Math.max(-90,Math.min(0,m.db)),quiet=m.db<-80;
   $('#input-db').textContent=m.db<=-119?'−∞ dBFS':`${Math.round(m.db)} dBFS`;
@@ -220,7 +232,7 @@ function paintInputMetrics(samples,sampleRate){
 }
 function checkCaptureHealth(){
   if(!listening)return;const now=performance.now(),paused=ctx.state!=='running',stalled=now-(lastSampleAt||captureStarted)>3000,muted=stream?.getAudioTracks()[0]?.muted;
-  $('#diag-context').textContent=ctx.state;$('#rx-badge').textContent=paused||stalled||muted?'PAUSED':'LIVE';$('#restart-microphone').hidden=!(paused||stalled||muted);
+  $('#diag-context').textContent=ctx.state;$('#rx-badge').textContent=paused||stalled||muted?'PAUSED':captureReady?'LIVE':'WARMUP';$('#restart-microphone').hidden=!(paused||stalled||muted);
   if(paused||stalled||muted){
     $('#input-state').textContent=paused?`Audio context ${ctx.state}`:muted?'Microphone muted by the system':'No microphone samples arriving';
     $('#input-detail').textContent='Tap Restart microphone, keep this tab in the foreground, and check that no call or other app is using audio.';
@@ -240,15 +252,15 @@ $('#listen').onclick=async()=>{
   try{
     if(!window.isSecureContext)throw Error('Microphone capture requires HTTPS or localhost. Open the live HTTPS app.');
     if(!navigator.mediaDevices?.getUserMedia)throw Error('This browser does not expose microphone access. Open the standalone app in Safari, Chrome, Firefox, or Edge.');
-    status('Waiting for microphone permission…','active');const c=await audioContext();
+    status('Waiting for microphone permission…','active');setAudioSession('play-and-record');const c=await audioContext();
     const input=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:false,noiseSuppression:false,autoGainControl:false,channelCount:1},video:false});
     if(token!==listenToken){input.getTracks().forEach(t=>t.stop());return;}stream=input;
     await resumeAudioContext(c);
-    const current=makeWorker(c.sampleRate);inputHistory=new PcmHistory(c.sampleRate,30);inputMetrics=null;lastSampleAt=0;lastMeterAt=0;$('#save-capture').disabled=true;
+    const current=makeWorker(c.sampleRate);inputHistory=new PcmHistory(c.sampleRate,30);inputMetrics=null;captureReady=false;capturedSamples=0;lastSampleAt=0;lastMeterAt=0;$('#save-capture').disabled=true;
     capture=await attachCapture(c,input,samples=>{if(listening&&current===job){paintInputMetrics(samples,c.sampleRate);worker?.postMessage({type:'audio',job:current,samples},[samples.buffer]);}});
     await resumeAudioContext(c);
     if(token!==listenToken){capture.close();input.getTracks().forEach(t=>t.stop());return;}
-    analyser=capture.analyser;listening=true;captureStarted=performance.now();$('#input-monitor').hidden=false;$('#input-state').textContent='Waiting for microphone samples';healthTimer=setInterval(checkCaptureHealth,500);$('#listen-label').textContent='Stop microphone';$('#listen').classList.add('listening');$('#rx-badge').textContent='LIVE';$('#scope-state').textContent='MIC INPUT';$('#scope-caption').textContent='AUTO-SCALED INPUT';
+    analyser=capture.analyser;listening=true;captureStarted=performance.now();$('#input-monitor').hidden=false;$('#input-state').textContent='Waiting for microphone samples';healthTimer=setInterval(checkCaptureHealth,500);$('#listen-label').textContent='Stop microphone';$('#listen').classList.add('listening');$('#rx-badge').textContent='WARMUP';$('#scope-state').textContent='MIC INPUT';$('#scope-caption').textContent='AUTO-SCALED INPUT';
     $('#scope-protocol').textContent='AUTO DETECT';$('#scope-rate').textContent=`${(c.sampleRate/1000).toFixed(1)} kHz`;$('#scope-frequency').textContent='1.2–2.4 kHz';
     $('#diag-engine').textContent=capture.method;$('#diag-rate').textContent=`${c.sampleRate.toLocaleString()} Hz`;$('#diag-input').textContent=input.getAudioTracks()[0]?.label||'Default microphone';$('#diagnostic-summary').textContent=capture.method;
     $('#diag-context').textContent=c.state;
@@ -256,7 +268,7 @@ $('#listen').onclick=async()=>{
     $('#diag-processing').textContent=[['echoCancellation','Echo'],['noiseSuppression','Noise'],['autoGainControl','AGC']].map(([key,label])=>`${label}: ${settings[key]===true?'on':settings[key]===false?'off':'not reported'}`).join(' / ');
     if(capture.workletError)$('#diag-engine').title=capture.workletError;
     input.getTracks().forEach(t=>t.addEventListener('ended',()=>{if(listening){stopListening();status('Microphone disconnected. Choose an available input and restart.','error');}}));
-    status('Listening. Transmit a signal nearby; keep this tab in the foreground.','active');
+    status('Starting audio capture. Wait for Microphone ready before transmitting.','active');
   }catch(error){
     cleanupMicrophone();const message={NotAllowedError:'Microphone access was declined or blocked by this browser. Allow it in site settings, or open the standalone app.',NotFoundError:'No microphone found. Connect one, or import a recording.',NotReadableError:'Microphone unavailable. Close other apps using it and retry.'}[error.name]||err(error);
     status(message,'error');$('#diag-engine').textContent='Failed to start';$('#diagnostics').open=true;toast(message,true);
@@ -269,15 +281,15 @@ function transferStatus(t){
   if(t.protocol==='same')return `${received} / 3 matching SAME headers${t.endCopies?` · ${t.endCopies} / 3 end bursts`:''}${t.state==='incomplete'?' · incomplete':''}.`;
   if(t.legacy)return 'Legacy packet passed CRC-32. Its format does not declare a copy plan.';
   if(t.state==='verified')return `${received} / ${t.total} copies verified. ${t.total>1?'All payload bytes match.':'CRC-32 passed.'}`;
-  if(t.state==='incomplete')return `${received} / ${t.total} valid copies. Transfer incomplete; missing copies were not verified.`;
+  if(t.state==='incomplete'){const missing=Array.from({length:t.total},(_,i)=>i).filter(i=>!t.received.includes(i)).map(i=>i+1);return `${received} / ${t.total} valid copies. ${missing.length===1?'Copy':'Copies'} ${missing.join(', ')} ${missing.length===1?'was':'were'} not verified.`;}
   return `${received} / ${t.total} copies verified. Waiting for ${t.total-received} more.`;
 }
 function renderProgress(t){
   $('#copy-progress').hidden=false;const isSame=t.protocol==='same',received=isSame?Array.from({length:t.copies},(_,i)=>i):t.received;
   $('#copy-plan').textContent=isSame?'SAME / three header bursts':t.legacy?'Legacy packet / no copy plan':`Transfer ${t.id.slice(0,8)} / ${t.total} ${t.total===1?'copy':'copies'} expected`;
   $('#copy-status').textContent=`${received.length} / ${t.total}`;
-  const slots=$('#copy-slots');slots.replaceChildren();for(let i=0;i<t.total;i++){const valid=received.includes(i),announced=!isSame&&t.announced?.includes(i),state=valid?'received':announced&&t.state==='receiving'?'announced':'';slots.append(el('div','copy-slot '+state,`${valid?'✓':t.state==='incomplete'?'–':announced?'⋯':'○'} Copy ${i+1}`));}
-  $('#copy-explanation').textContent=t.state==='conflict'?'Different content was received under the same transfer ID. Verification failed.':isSame?`${t.copies}/3 parsed headers match. SAME has no checksum.${t.endCopies?` End markers: ${t.endCopies}/3.`:''}`:t.legacy?'This older packet has no declared repetition information.':t.state==='verified'?t.total>1?'Every copy passed CRC-32. Metadata and original payload bytes match.':'The declared single copy passed its full-frame CRC-32 check.':t.state==='incomplete'?'At least one expected copy is missing or corrupt. Available bytes remain marked incomplete.':'The header declares the plan before the payload completes. Only full checksum-valid copies earn a check.';
+  const slots=$('#copy-slots');slots.replaceChildren();for(let i=0;i<t.total;i++){const valid=received.includes(i),announced=!isSame&&t.announced?.includes(i),state=valid?'received':announced&&t.state==='receiving'?'announced':'';const slot=el('div','copy-slot '+state),label=valid?'Verified':t.failed?.includes(i)?'CRC failed':announced?'Header only':t.state==='incomplete'?'Not detected':'Waiting';slot.append(el('span','',`${valid?'✓':t.state==='incomplete'?'–':announced?'⋯':'○'} Copy ${i+1}`),el('small','',label));slots.append(slot);}
+  $('#copy-explanation').textContent=t.state==='conflict'?'Different content was received under the same transfer ID. Verification failed.':isSame?`${t.copies}/3 parsed headers match. SAME has no checksum.${t.endCopies?` End markers: ${t.endCopies}/3.`:''}`:t.legacy?'This older packet has no declared repetition information.':t.state==='verified'?t.total>1?'Every copy passed CRC-32. Metadata and original payload bytes match.':'The declared single copy passed its full-frame CRC-32 check.':t.state==='incomplete'?'Not detected = no valid header. Header only = plan decoded, but no valid full payload. CRC failed = a complete candidate failed its checksum. Verified = full checksum passed.':'The header declares the plan before the payload completes. Only full checksum-valid copies earn a check.';
 }
 function upsertReception(t,key){let item=receptions.find(r=>r.key===key);if(!item){item={key,at:new Date(),transfer:t};receptions.unshift(item);if(receptions.length>50)receptions.pop();}else item.transfer=t;$('#count').textContent=receptions.length;renderHistory();return item;}
 function showTransfer(t,item){$('#decode-stage').textContent=t.state==='verified'?'Payload verified':t.state==='incomplete'?'Incomplete copy set':t.state==='conflict'?'Copy conflict':t.frame?'Payload received; checking copies':'Transfer header read';renderProgress(t);if(t.frame){$('#empty-result').hidden=true;$('#result').hidden=false;$('#result').replaceChildren(resultCard(t,item?.at||new Date()));}status(transferStatus(t),t.state==='conflict'?'error':listening||busy?'active':'ready');}

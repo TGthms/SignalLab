@@ -89,3 +89,11 @@ The NOAA location directory is a dated snapshot and includes legacy entries. Nam
 - [MDN: microphone capture](https://developer.mozilla.org/en-US/docs/Web/API/MediaDevices/getUserMedia)
 
 The preserved `.openai/hosting.json` records an earlier, unavailable Sites registration. Active hosting is GitHub Pages; that Sites identity is not used by the deployment workflow.
+
+## Receiver tuning (v0.2.2)
+
+Wait for **Microphone ready** before transmitting. Normal sensitivity balances the two custom tone levels automatically; Higher lowers the acquisition floor and permits two damaged sync bits after a recognizable preamble. All payloads still require the full checksum. Copy slots distinguish a missed header, header-only reception, a checksum failure, and a verified copy. Custom transmissions provide at least 1.8 seconds of training tones per copy.
+
+On browsers with the Audio Session API, playback declares `playback` intent and microphone capture declares `play-and-record`. This is intended to give iPhone playback media-volume behavior under Ring/Silent; older/embedded browsers may still control routing differently. The page returns the session to `auto` after use. See [WebKit’s explanation](https://bugs.webkit.org/show_bug.cgi?id=252746) and the [Audio Session specification](https://w3c.github.io/audio-session/).
+
+Automated checks cover channel coloration, echoes, startup truncation, sensitivity and copy diagnostics. Specific speaker/phone combinations and silent-switch behavior require physical testing.

@@ -4,7 +4,7 @@ An experimental format for data over audio. It is separate from EAS/SAME and is 
 
 ## Modulation
 
-Continuous-phase binary FSK: 0 = 1,200 Hz, 1 = 2,400 Hz. Profiles use 100, 300, or 600 bit/s. Bytes are transmitted least significant bit first without start, stop, or parity bits. The encoder adds 180 ms silence at each end of each copy and 650 ms between padded copies.
+Continuous-phase binary FSK (custom tone transitions are cosine-smoothed over the first 10% of each bit): 0 = 1,200 Hz, 1 = 2,400 Hz. Profiles use 100, 300, or 600 bit/s. Bytes are transmitted least significant bit first without start, stop, or parity bits. The encoder adds 180 ms silence at each end of each copy and 650 ms between padded copies.
 
 ## Frame
 
@@ -12,7 +12,7 @@ All multi-byte integers are unsigned big-endian.
 
 | Bytes | Field |
 | --- | --- |
-| 32 | Preamble, 0x55 repeated |
+| 32–256 | Preamble, 0x55 repeated (app uses at least 1.8 s) |
 | 4 | Sync word, ASCII `SLAB` |
 | 1 | Version, 2 |
 | 2 | Metadata byte length (2–1,024) |
@@ -55,7 +55,9 @@ File: `{"kind":"file","name":"example.bin","mime":"application/octet-stream"}`; 
 
 ## Timing recovery
 
-The demodulator compares quadrature energies over 80% of a bit, sampling eight timing phases. All candidates search for sync. Locked frames use tone transitions to follow modest differences between device sample clocks. Tests include ±0.1% clock drift on an 8 KiB payload.
+The demodulator compares quadrature energies over 80% of a bit, sampling eight timing phases. All candidates search for sync. Custom tone energies are balanced using leaky peak estimates learned from the alternating preamble. The app sends max(32, ceil(baud × 1.8 / 8)) preamble bytes per copy; older 32-byte preambles remain decodable. Lower sensitivity requires exact sync and a tone-power floor of 1e-7; Normal uses 1e-9 and tolerates one sync-bit error; Higher uses 1e-11 and tolerates two. Tolerant sync requires a preceding 32-bit alternating pattern with at most six errors. No damaged payload or header is accepted without its existing CRC checks. Sensitivity changes take effect without restarting an active frame.
+
+Locked frames use tone transitions to follow modest differences between device sample clocks. Tests include ±0.1% clock drift on an 8 KiB payload.
 
 ## Compatibility
 

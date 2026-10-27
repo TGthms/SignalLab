@@ -1,4 +1,4 @@
-import {crc32,PROFILES} from './codec.mjs?v=0.2.1';
+import {crc32,PROFILES,customPreambleBytes} from './codec.mjs?v=0.2.2';
 
 // Repetition is part of the wire protocol, not a timer or a UI assumption.
 export class TransferTracker {
@@ -7,19 +7,20 @@ export class TransferTracker {
     let t=this.transfers.get(h.id);
     if(!t){
       if(this.transfers.size>=50)this.transfers.delete(this.transfers.keys().next().value);
-      t={id:h.id,total:h.total,received:[],announced:[],state:'receiving',payloadLength:h.payloadLength,profile:h.profile};
+      t={id:h.id,total:h.total,received:[],announced:[],failed:[],state:'receiving',payloadLength:h.payloadLength,profile:h.profile};
       this.transfers.set(h.id,t);
     }
     if(t.total!==h.total||t.payloadLength!==h.payloadLength){t.state='conflict';this.emit(t);return;}
     if(Number.isFinite(h.samplePosition)&&Number.isFinite(h.metadataLength)&&!t.deadline){
       const baud=Object.values(PROFILES).find(p=>p.name===h.profile)?.baud||300;
       const rest=(h.metadataLength+h.payloadLength+4)*8/baud;
-      const full=(32+4+21+h.metadataLength+h.payloadLength+4)*8/baud+.36;
+      const full=(customPreambleBytes({baud})+4+21+h.metadataLength+h.payloadLength+4)*8/baud+.36;
       t.deadlineSeconds=h.samplePosition/h.sampleRate+rest+(h.total-h.index-1)*(full+.65)+1;
       t.deadline=Number.isFinite(t.deadlineSeconds);
     }
     if(!t.announced.includes(h.index)){t.announced.push(h.index);this.emit(t);}
   }
+  reject(h){this.header(h);const t=this.transfers.get(h.id);if(t&&!t.received.includes(h.index)&&!t.failed.includes(h.index)){t.failed.push(h.index);this.emit(t);}}
   frame(f){
     if(!f.transmission){this.onUpdate({type:'legacy',frame:f});return;}
     const h={...f.transmission,payloadLength:f.payload.length,profile:f.profile};this.header(h);
@@ -29,12 +30,12 @@ export class TransferTracker {
     // not a cryptographic equality or authenticity guarantee.
     if(t.frame&&(t.fingerprint!==fingerprint||!f.payload.every((b,i)=>t.frame.payload[i]===b))){t.state='conflict';this.emit(t);return;}
     if(t.received.includes(h.index))return;
-    t.fingerprint=fingerprint;t.frame=f;t.received.push(h.index);t.received.sort();
+    t.failed=t.failed.filter(i=>i!==h.index);t.fingerprint=fingerprint;t.frame=f;t.received.push(h.index);t.received.sort();
     t.state=t.received.length===t.total?'verified':'receiving';this.emit(t);
   }
   tick(samplePosition,sr){for(const t of this.transfers.values())if(t.state==='receiving'&&t.deadline&&samplePosition/sr>t.deadlineSeconds){t.state='incomplete';this.emit(t);}}
   finish(){for(const t of this.transfers.values())if(t.state==='receiving'){t.state='incomplete';this.emit(t);}}
-  emit(t){this.onUpdate({type:'transfer',transfer:{...t,received:[...t.received],announced:[...t.announced]}});}
+  emit(t){this.onUpdate({type:'transfer',transfer:{...t,received:[...t.received],announced:[...t.announced],failed:[...t.failed]}});}
 }
 
 // SAME always transmits three bursts. Demodulator phases detect each physical

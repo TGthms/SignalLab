@@ -23,6 +23,7 @@ jobs:
           node tests/locations.test.mjs
           node tests/capture.test.mjs
           node tests/acoustic.test.mjs
+          node tests/acquisition.test.mjs
           node --check dist/app.mjs
           node --check dist/receive-worker.mjs
       - name: Configure Pages
