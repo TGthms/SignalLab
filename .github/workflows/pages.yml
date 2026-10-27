@@ -29,6 +29,7 @@ jobs:
           node tests/morse.test.mjs
           node tests/signal-plan.test.mjs
           node tests/custom-stream.test.mjs
+          node tests/eas-study.test.mjs
           node --check dist/app.mjs
           node --check dist/receive-worker.mjs
       - uses: actions/setup-python@v5

@@ -6,7 +6,7 @@
   "type": "module",
   "scripts": {
     "start": "python3 serve.py",
-    "test": "node tests/codec.test.mjs && node tests/transfers.test.mjs && node tests/locations.test.mjs && node tests/capture.test.mjs && node tests/acoustic.test.mjs && node tests/acquisition.test.mjs && node tests/session.test.mjs && node tests/monitor.test.mjs && node tests/morse.test.mjs && node tests/signal-plan.test.mjs && node tests/custom-stream.test.mjs",
+    "test": "node tests/codec.test.mjs && node tests/transfers.test.mjs && node tests/locations.test.mjs && node tests/capture.test.mjs && node tests/acoustic.test.mjs && node tests/acquisition.test.mjs && node tests/session.test.mjs && node tests/monitor.test.mjs && node tests/morse.test.mjs && node tests/signal-plan.test.mjs && node tests/custom-stream.test.mjs && node tests/eas-study.test.mjs",
     "check": "node --check dist/app.mjs && node --check dist/codec.mjs && node --check dist/receive-worker.mjs && node --check dist/signal-plan.mjs && node --check dist/demo.mjs && node --check dist/custom-stream.mjs && node --check dist/custom-worklet.mjs"
   },
   "engines": {

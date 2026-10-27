@@ -104,5 +104,23 @@ class WorkflowTests(unittest.TestCase):
         self.assertTrue(page.get_by_text('EAS tones are regulated').is_visible())
         self.assertTrue(page.get_by_text('In the U.S., FCC rules restrict transmitting EAS codes', exact=False).is_visible())
 
+    def test_same_study_is_silent_and_cannot_export(self):
+        page = self.page
+        page.get_by_role('button', name='EAS / SAME', exact=True).click()
+        self.assertFalse(page.locator('#export').is_visible())
+        self.assertTrue(page.get_by_text('Prefer the silent decoder test.', exact=False).is_visible())
+        self.assertEqual(page.locator('#loopback').get_attribute('class').split().count('primary'), 1)
+        # The handler must refuse export even if invoked outside the visible UI.
+        page.locator('#export').evaluate('(element) => element.click()')
+        page.get_by_text('EAS WAV export is unavailable.', exact=False).last.wait_for()
+        page.get_by_role('button', name='Test in decoder').click()
+        page.locator('#result').get_by_text('3 matching SAME headers', exact=True).wait_for(timeout=15000)
+        self.assertFalse(page.locator('#playback-timeline').is_visible())
+        page.get_by_role('button', name='Encoder').click()
+        page.get_by_role('button', name='Morse', exact=True).click()
+        self.assertTrue(page.locator('#export').is_visible())
+        page.get_by_role('button', name='Custom data', exact=True).click()
+        self.assertTrue(page.locator('#export').is_visible())
+
 if __name__ == '__main__':
     unittest.main()

@@ -181,3 +181,8 @@ footer{font-size:11px;letter-spacing:0}
 #cancel-test{margin-top:14px}
 .same-legal-reminder{font-size:13px;line-height:1.5;color:var(--muted);margin:14px 0 0}.same-legal-reminder a{color:var(--accent);text-decoration:underline;text-underline-offset:3px}
 .export-status{font-size:13px;color:var(--muted);margin-top:12px}#cancel-export{margin-top:8px}
+
+.same-actions #loopback{order:-1}
+
+.footer-links{display:flex;align-items:center;gap:20px;flex-wrap:wrap}.footer-links a{padding:8px 0;color:var(--muted)}
+.policy-shell{max-width:820px;margin:0 auto;padding:42px 28px 70px}.policy-shell h1{font-size:30px}.policy-shell h2{font-size:19px;margin:32px 0 10px}.policy-shell p,.policy-shell li{font-size:15px;line-height:1.7;color:var(--muted)}.policy-shell a:not(.brand){color:var(--accent);text-decoration:underline;text-underline-offset:3px}.policy-shell ul{padding-left:22px}.policy-shell li{margin:7px 0}.policy-shell .policy-date{font-size:13px}.policy-review{background:var(--accent-wash);border-left:3px solid var(--accent);padding:14px 16px;margin:24px 0}.policy-review p{margin:0;color:var(--text);font-size:14px}.policy-shell footer{margin-top:40px;flex-wrap:wrap}@media(max-width:480px){.policy-shell{padding:28px 18px 50px}.policy-shell h1{font-size:27px}.footer-links{gap:16px}.policy-shell footer{gap:8px}}

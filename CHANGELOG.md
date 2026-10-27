@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Add draft privacy and terms notices covering GitHub and Cloudflare hosting, local processing and EAS limitations; add a reminder about alarming others beside EAS playback.
+
+- Remove EAS/SAME WAV export; make the silent internal decoder test the primary study action and clarify that announcements are for playback only.
+
 - Stream custom-data playback, WAV encoding and internal decoder tests in chunks; remove the five-minute generation limit. WAV export uses streamed file writing where supported.
 - Add FCC EAS-use guidance and direct links to the rule and an enforcement example.
 
