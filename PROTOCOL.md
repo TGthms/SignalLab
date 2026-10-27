@@ -12,7 +12,7 @@ All multi-byte integers are unsigned big-endian.
 
 | Bytes | Field |
 | --- | --- |
-| 32–256 | Preamble, 0x55 repeated (app uses at least 1.8 s) |
+| 8–256 | Preamble, 0x55 repeated (long first copy, shorter subsequent copies) |
 | 4 | Sync word, ASCII `SLAB` |
 | 1 | Version, 2 |
 | 2 | Metadata byte length (2–1,024) |
@@ -41,7 +41,7 @@ All bytes after sync, including both checksums, are XOR-whitened using xorshift3
 4. Count distinct copy indices only. Multiple demodulator phase candidates for one physical copy never become extra copies.
 5. Mark verified only when every declared index has a valid, matching copy. One declared copy means one CRC-valid frame; two or three means that many matching frames.
 6. Report a content or plan disagreement as a conflict. Do not replace the first valid payload silently.
-7. At end of recording or live listening, mark missing copies incomplete. During live reception, estimate the remaining declared transfer window from profile, frame lengths, and copy index; an expired window also marks incomplete. A late valid copy can subsequently complete the same transfer.
+7. At end of recording or live listening, mark missing copies incomplete. During live reception, estimate the remaining declared transfer window from profile, frame lengths, and copy index; an expired window also marks incomplete. The deadline conservatively allows the older long-preamble repeats, and only changes that transfer’s state; it does not stop live capture. A late valid copy can subsequently complete the same transfer.
 
 Available checksum-valid bytes from an incomplete transfer may be downloaded with the incomplete status still visible. No automatic acknowledgement or retry is implemented.
 
@@ -55,7 +55,7 @@ File: `{"kind":"file","name":"example.bin","mime":"application/octet-stream"}`; 
 
 ## Timing recovery
 
-The demodulator compares quadrature energies over 80% of a bit, sampling eight timing phases. All candidates search for sync. Custom tone energies are balanced using leaky peak estimates learned from the alternating preamble. The app sends max(32, ceil(baud × 1.8 / 8)) preamble bytes per copy; older 32-byte preambles remain decodable. Lower sensitivity requires exact sync and a tone-power floor of 1e-7; Normal uses 1e-9 and tolerates one sync-bit error; Higher uses 1e-11 and tolerates two. Tolerant sync requires a preceding 32-bit alternating pattern with at most six errors. No damaged payload or header is accepted without its existing CRC checks. Sensitivity changes take effect without restarting an active frame.
+The demodulator compares quadrature energies over 80% of a bit, sampling eight timing phases. All candidates search for sync. Custom tone energies are balanced using leaky peak estimates learned from the alternating preamble. The app sends max(8, ceil(baud × 1.8 / 8)) preamble bytes on copy 0 and max(8, ceil(baud × 0.32 / 8)) on subsequent copies; older 32-byte preambles remain decodable. Lower sensitivity requires exact sync and a tone-power floor of 1e-7; Normal uses 1e-9 and tolerates one sync-bit error; Higher uses 1e-11 and tolerates two. Tolerant sync requires a preceding 32-bit alternating pattern with at most six errors. No damaged payload or header is accepted without its existing CRC checks. Sensitivity changes take effect without restarting an active frame.
 
 Locked frames use tone transitions to follow modest differences between device sample clocks. Tests include ±0.1% clock drift on an 8 KiB payload.
 

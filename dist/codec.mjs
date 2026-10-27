@@ -14,7 +14,7 @@ export const SENSITIVITY = {
   high: { floor: 1e-11, syncErrors: 2 }
 };
 // A fixed-duration training lead gives phone audio routes time to settle.
-export const customPreambleBytes = profile => Math.max(32, Math.ceil(profile.baud * 1.8 / 8));
+export const customPreambleBytes = (profile,index=0) => Math.max(8, Math.ceil(profile.baud * (index===0?1.8:.32) / 8));
 function bitErrors(word){word >>>= 0;let n=0;while(word){word&=word-1;n++;}return n;}
 const enc = new TextEncoder();
 const dec = new TextDecoder('utf-8', { fatal: true });
@@ -39,7 +39,7 @@ export function packet(payload, meta, transmission = {}) {
   v.setUint32(17,crc32(body.subarray(0,17)));
   body.set(m,21);body.set(payload,21+m.length);
   const preamble=transmission.preambleBytes??32;
-  if(!Number.isInteger(preamble)||preamble<32||preamble>256)throw Error('Invalid preamble length.');
+  if(!Number.isInteger(preamble)||preamble<8||preamble>256)throw Error('Invalid preamble length.');
   const start=preamble+4,bytes=new Uint8Array(start+body.length+4);bytes.fill(0x55,0,preamble);
   bytes.set([0x53,0x4c,0x41,0x42],preamble);bytes.set(body,start);
   new DataView(bytes.buffer).setUint32(bytes.length-4,crc32(body));

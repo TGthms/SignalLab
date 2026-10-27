@@ -47,3 +47,32 @@ export async function resumeAudioContext(context,timeoutMs=3000){
 export function configureAudioSession(host,type){
   try{if(!host?.audioSession)return 'unsupported';host.audioSession.type=type;return host.audioSession.type;}catch{return 'unavailable';}
 }
+
+// The microphone owns its context. Releasing only the tracks can leave an iOS
+// audio route alive; always attempt every cleanup step, even after node errors.
+export async function releaseMicrophone({stream,capture,context}){
+  const errors=[];
+  for(const track of stream?.getTracks()||[])try{track.stop();}catch(e){errors.push(e);}
+  try{capture?.close();}catch(e){errors.push(e);}
+  try{if(context&&context.state!=='closed')await context.close();}catch(e){errors.push(e);}
+  if(errors.length)throw new AggregateError(errors,'Could not fully release microphone audio.');
+}
+
+export class ListeningWakeLock {
+  constructor(host,document,onState=()=>{}){Object.assign(this,{host,document,onState});this.active=false;this.lock=null;this.pending=null;}
+  async start(){this.active=true;await this.ensure();}
+  async ensure(){
+    if(!this.active||this.document.visibilityState!=='visible'||this.lock||this.pending)return;
+    if(!this.host.wakeLock){this.onState('Unavailable');return;}
+    let request;
+    try{
+      request=this.host.wakeLock.request('screen');this.pending=request;
+      const lock=await request;
+      if(!this.active||this.document.visibilityState!=='visible'){await lock.release();return;}
+      this.lock=lock;this.onState('Screen kept awake');
+      lock.addEventListener('release',()=>{if(this.lock===lock){this.lock=null;this.onState(this.active?'Released by system':'Off');}});
+    }catch{if(this.active)this.onState('Unavailable / keep screen awake manually');}
+    finally{if(this.pending===request)this.pending=null;}
+  }
+  stop(){this.active=false;const lock=this.lock;this.lock=null;this.onState('Off');return lock?.release().catch(()=>{});}
+}

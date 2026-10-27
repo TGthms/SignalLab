@@ -1,5 +1,17 @@
 # Changes
 
+## 0.2.3
+
+- Give microphone capture a dedicated AudioContext, and fully stop tracks, disconnect capture nodes and close the context on Stop and initialization failure. Wait for teardown before reuse and restore the audio-session category after release.
+- Keep live capture running across messages and app pages. Request a screen wake lock while listening, reacquire it on foreground return and release it on Stop. Retry temporary context interruption without requiring another Start click; report unavailable input honestly.
+- Keep imports/demos from silently replacing an active live decoder.
+- Log independently identified messages including header-only failures; clear stale payloads on a new header, and prevent older-transfer timeout updates from taking over the latest result.
+- Split successive SAME messages into independent three-header groups even when end bursts are absent.
+- Keep a roughly 1.8-second training lead on the first custom copy, while shortening later-copy leads to 0.32–0.64 seconds. Shorten the Resilient first lead from 2.56 to 1.84 seconds. Preserve conservative timeout compatibility with older long-lead senders.
+- Add mixed-protocol multi-message, active-result isolation, owned-context cleanup, wake-lock denial and pending-request cancellation tests.
+
+Physical iPhone routing and background capture remain subject to Safari/iOS behavior; automated tests cannot certify device behavior.
+
 ## 0.2.2
 
 - Balance custom tone energies to compensate for unequal speaker/microphone frequency response; regression tests include filtered audio and echo trains.

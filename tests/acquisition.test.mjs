@@ -45,11 +45,11 @@ tracker.reject({...failed.rejected[0],sampleRate:48000});tracker.finish();assert
 const good=decode(modulate(packet(payload,meta))).frames[0];tracker.frame(good);assert.equal(events.at(-1).transfer.state,'verified');assert.deepEqual(events.at(-1).transfer.failed,[]);
 console.log('PASS checksum-failed copy diagnostics and later valid-copy recovery');
 const id='1234567890abcdef',lateEvents=[],late=new TransferTracker(e=>lateEvents.push(e));
-const parts=[1,2].map(index=>modulate(packet(payload,meta,{id,total:3,index,preambleBytes:customPreambleBytes(PROFILES.balanced)})));
+const parts=[1,2].map(index=>modulate(packet(payload,meta,{id,total:3,index,preambleBytes:customPreambleBytes(PROFILES.balanced,index)})));
 const rx=new Receiver(48000,f=>late.frame(f),null,[PROFILES.balanced],h=>late.header({...h,sampleRate:48000}));
 rx.feed(joinAudio(parts,48000,.65));late.finish();assert.deepEqual(lateEvents.at(-1).transfer.received,[1,2]);assert.equal(lateEvents.at(-1).transfer.state,'incomplete');
 const timing=[],clock=new TransferTracker(e=>timing.push(e));const headers=[];
-const three=joinAudio([0,1,2].map(index=>modulate(packet(payload,meta,{id,total:3,index,preambleBytes:customPreambleBytes(PROFILES.balanced)}))),48000,.65);
+const three=joinAudio([0,1,2].map(index=>modulate(packet(payload,meta,{id,total:3,index,preambleBytes:customPreambleBytes(PROFILES.balanced,index)}))),48000,.65);
 const clockRx=new Receiver(48000,f=>clock.frame(f),null,[PROFILES.balanced],h=>{headers.push(h);clock.header({...h,sampleRate:48000});});
 for(let at=0;at<three.length;at+=2048){clockRx.feed(three.subarray(at,at+2048));clock.tick(at+2048,48000);}
 assert.equal(timing.at(-1).transfer.state,'verified');assert(!timing.some(e=>e.transfer.state==='incomplete'));

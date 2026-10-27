@@ -1,4 +1,4 @@
-import {crc32,PROFILES,customPreambleBytes} from './codec.mjs?v=0.2.2';
+import {crc32,PROFILES,customPreambleBytes} from './codec.mjs?v=0.2.3';
 
 // Repetition is part of the wire protocol, not a timer or a UI assumption.
 export class TransferTracker {
@@ -14,7 +14,8 @@ export class TransferTracker {
     if(Number.isFinite(h.samplePosition)&&Number.isFinite(h.metadataLength)&&!t.deadline){
       const baud=Object.values(PROFILES).find(p=>p.name===h.profile)?.baud||300;
       const rest=(h.metadataLength+h.payloadLength+4)*8/baud;
-      const full=(customPreambleBytes({baud})+4+21+h.metadataLength+h.payloadLength+4)*8/baud+.36;
+      // Use the longest lead for future copies so v0.2.2 senders also fit.
+      const full=(Math.max(32,customPreambleBytes({baud}))+4+21+h.metadataLength+h.payloadLength+4)*8/baud+.36;
       t.deadlineSeconds=h.samplePosition/h.sampleRate+rest+(h.total-h.index-1)*(full+.65)+1;
       t.deadline=Number.isFinite(t.deadlineSeconds);
     }
@@ -48,7 +49,7 @@ export class SameTracker {
     if(f.protocol==='same'){
       const expectedSpacing=(16+f.raw.length)*8/(1/.00192)+1;
       let t=this.current;
-      if(!t||t.ended||time-t.lastHeader>expectedSpacing+2){
+      if(!t||t.ended||(t.copies===3&&time-t.lastHeader>=.15)||time-t.lastHeader>expectedSpacing+2){
         if(t&&!t.ended)this.finish();
         t={id:'same-'+(++this.counter),protocol:'same',frame:f,copies:0,total:3,endCopies:0,ended:false,lastHeader:-Infinity,lastEnd:-Infinity,conflict:false};this.current=t;
       }

@@ -1,12 +1,12 @@
 {
   "name": "signal-lab",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "private": true,
   "description": "An educational browser audio modem and EAS/SAME workbench",
   "type": "module",
   "scripts": {
     "start": "python3 serve.py",
-    "test": "node tests/codec.test.mjs && node tests/transfers.test.mjs && node tests/locations.test.mjs && node tests/capture.test.mjs && node tests/acoustic.test.mjs && node tests/acquisition.test.mjs",
+    "test": "node tests/codec.test.mjs && node tests/transfers.test.mjs && node tests/locations.test.mjs && node tests/capture.test.mjs && node tests/acoustic.test.mjs && node tests/acquisition.test.mjs && node tests/session.test.mjs",
     "check": "node --check dist/app.mjs && node --check dist/codec.mjs && node --check dist/receive-worker.mjs"
   },
   "engines": {

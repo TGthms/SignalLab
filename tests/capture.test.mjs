@@ -36,3 +36,19 @@ for(const type of ['playback','play-and-record','auto']){assert.equal(configureA
 assert.equal(configureAudioSession({},'playback'),'unsupported');
 assert.equal(configureAudioSession({get audioSession(){throw Error('Blocked');}},'playback'),'unavailable');
 console.log('PASS playback/recording session routing, release and unsupported-browser handling');
+
+const {releaseMicrophone,ListeningWakeLock}=await import('../dist/capture.mjs');
+const order=[],owned={state:'running',async close(){order.push('context');this.state='closed';}},unrelated={state:'running'};
+await releaseMicrophone({stream:{getTracks:()=>[{stop:()=>order.push('track')}]},capture:{close:()=>order.push('graph')},context:owned});
+assert.deepEqual(order,['track','graph','context']);assert.equal(owned.state,'closed');assert.equal(unrelated.state,'running');
+let releasedAfterError=false;
+await assert.rejects(releaseMicrophone({capture:{close(){throw Error('broken graph');}},context:{state:'running',async close(){releasedAfterError=true;}}}),/release/);
+assert(releasedAfterError);await releaseMicrophone({});
+console.log('PASS mic Stop releases tracks, graph and owned context; node errors cannot skip context cleanup');
+let requests=0,releases=0,onRelease;
+const doc={visibilityState:'visible'},states=[];
+const wake=new ListeningWakeLock({wakeLock:{async request(type){assert.equal(type,'screen');requests++;return{addEventListener(_,f){onRelease=f;},async release(){releases++;}};}}},doc,state=>states.push(state));
+await wake.start();await wake.ensure();assert.equal(requests,1);onRelease();await wake.ensure();assert.equal(requests,2);await wake.stop();assert.equal(releases,1);await wake.ensure();assert.equal(requests,2);
+let resolveLock;const pending=new ListeningWakeLock({wakeLock:{request:()=>new Promise(resolve=>resolveLock=resolve)}},doc);const starting=pending.start();pending.stop();resolveLock({async release(){releases++;}});await starting;assert.equal(releases,2);assert.equal(pending.lock,null);
+const rejected=new ListeningWakeLock({wakeLock:{request(){throw Error('Denied');}}},doc);await rejected.start();rejected.stop();
+console.log('PASS wake-lock lifetime, reacquisition after system release, Stop during a pending request and denial');
