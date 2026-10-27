@@ -40,13 +40,14 @@ colorQuery.addEventListener('change',()=>{if(themePreference==='system')applyThe
 function showPage(next){
   const previous=page;
   page=['encoder','decoder','learn','history'].includes(next)?next:'encoder';
-  $$('.page').forEach(n=>n.hidden=n.id!==page);$$('.nav').forEach(n=>{n.classList.toggle('active',n.dataset.page===page);n.setAttribute('aria-current',n.dataset.page===page?'page':'false');});
+  $$('.page').forEach(n=>n.hidden=n.id!==`page-${page}`);$$('.nav').forEach(n=>{n.classList.toggle('active',n.dataset.page===page);n.setAttribute('aria-current',n.dataset.page===page?'page':'false');});
   const hash=page==='learn'?`#learn/${lesson}`:`#${page}`;if(location.hash!==hash){const method=location.hash?'pushState':'replaceState';window.history[method](null,'',hash);}
-  if(previous!==page){window.scrollTo(0,0);const active=document.activeElement;if(active?.closest('.page')?.hidden){const heading=$(`#${page} h1`);heading.tabIndex=-1;heading.focus({preventScroll:true});}}
+  if(previous!==page){window.scrollTo(0,0);const active=document.activeElement;if(active?.closest('.page')?.hidden){const heading=$(`#page-${page} h1`);heading.tabIndex=-1;heading.focus({preventScroll:true});}}
   updateInspector();updateLayout();if(page==='encoder'&&!listening&&!playing)updatePreview();requestAnimationFrame(drawScope);
 }
 function openLesson(next){lesson=['modem','verification','same','morse','reception'].includes(next)?next:'modem';$$('.lesson').forEach(n=>n.hidden=n.id!==`lesson-${lesson}`);$$('.lesson-tabs [data-lesson]').forEach(n=>{const selected=n.dataset.lesson===lesson;n.classList.toggle('selected',selected);n.setAttribute('aria-pressed',String(selected));});showPage('learn');}
 $$('[data-page]').forEach(n=>n.onclick=()=>showPage(n.dataset.page));
+$('.brand').onclick=e=>{e.preventDefault();showPage('encoder');window.scrollTo(0,0);};
 $$('[data-lesson]').forEach(n=>n.onclick=()=>openLesson(n.dataset.lesson));
 window.addEventListener('hashchange',()=>{const [next,topic]=location.hash.slice(1).split('/');if(next==='learn')openLesson(topic||lesson);else showPage(next);});
 function updateLayout(){$('.app-layout').classList.toggle('reading',(page==='learn'||page==='history')&&!listening&&!playing);}

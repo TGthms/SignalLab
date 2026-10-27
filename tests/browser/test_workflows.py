@@ -83,6 +83,19 @@ class WorkflowTests(unittest.TestCase):
         self.assertNotEqual(page.locator('#duration-estimate').inner_text(), 'Over 5 minutes')
         self.assertFalse(page.locator('#signal-limit').is_visible())
 
+    def test_entry_starts_at_top_and_deep_links_work(self):
+        page = self.page
+        for fragment, heading in [('', 'Encoder'), ('#encoder', 'Encoder'), ('#decoder', 'Decoder'), ('#learn/morse', 'Signal notes')]:
+            page.goto('about:blank')
+            page.goto(self.url + fragment)
+            page.get_by_role('heading', name=heading, level=1).wait_for()
+            self.assertAlmostEqual(page.evaluate('window.scrollY'), 0, delta=1, msg=fragment or 'root')
+            self.assertTrue(page.locator('.mode-nav').is_visible())
+        self.assertEqual(page.get_by_role('button', name='Morse code', exact=True).get_attribute('aria-pressed'), 'true')
+        page.locator('.brand').click()
+        self.assertTrue(page.get_by_role('heading', name='Encoder', level=1).is_visible())
+        self.assertAlmostEqual(page.evaluate('window.scrollY'), 0, delta=1)
+
     def test_header_stays_visible_when_scrolling(self):
         page = self.page
         page.get_by_role('button', name='Learn', exact=True).click()
