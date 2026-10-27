@@ -22,6 +22,7 @@ const privacy=await readFile(new URL('../dist/privacy.html',import.meta.url),'ut
 const terms=await readFile(new URL('../dist/terms.html',import.meta.url),'utf8');
 assert.match(html,/href="privacy\.html"/);assert.match(html,/href="terms\.html"/);
 assert.match(html,/cannot frighten or mislead others/);
-for(const text of [privacy,terms]){assert.match(text,/Draft prepared/);assert.match(text,/contact\.timg@icloud\.com/);}
+for(const text of [privacy,terms]){assert.match(text,/Last updated/);assert.doesNotMatch(text,/Draft prepared|draft for review/);assert.match(text,/contact\.timg@icloud\.com/);}
 assert.match(privacy,/GitHub Pages and a Cloudflare-hosted site/);
-console.log('PASS policy drafts, footer links, and contextual EAS warning');
+assert.match(terms,/<h1>Use and safety guidelines<\/h1>/);
+console.log('PASS privacy notice, safety guidelines, footer links, and contextual EAS warning');

@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Publish the privacy notice and clarify that the former draft terms are use and safety guidelines.
+
 - Add draft privacy and terms notices covering GitHub and Cloudflare hosting, local processing and EAS limitations; add a reminder about alarming others beside EAS playback.
 
 - Remove EAS/SAME WAV export; make the silent internal decoder test the primary study action and clarify that announcements are for playback only.
