@@ -45,9 +45,9 @@ class WorkflowTests(unittest.TestCase):
         page.locator('.transmission-settings summary').click()
         page.get_by_role('button', name='2×').click()
         page.get_by_role('button', name='Run a demo').click()
-        page.get_by_text('Signal received. Three copies, same message. 🌊').wait_for()
-        page.get_by_text('3 of 3 copies verified', exact=True).wait_for()
-        self.assertTrue(page.get_by_text('3 of 3 copies verified', exact=True).is_visible())
+        page.locator('#result').get_by_text('Signal received. Three copies, same message. 🌊').wait_for()
+        page.locator('#result').get_by_text('3 of 3 copies verified', exact=True).wait_for()
+        self.assertTrue(page.locator('#result').get_by_text('3 of 3 copies verified', exact=True).is_visible())
         page.get_by_role('button', name='Encoder').click()
         self.assertEqual(page.get_by_role('textbox', name='Message').input_value(), 'Keep this draft')
         self.assertEqual(page.get_by_role('button', name='2×').get_attribute('aria-pressed'), 'true')
@@ -60,7 +60,7 @@ class WorkflowTests(unittest.TestCase):
         self.assertIsNotNone(box)
         self.assertLessEqual(box['y'] + box['height'], 844)
         page.get_by_role('button', name='Test in decoder').click()
-        page.get_by_text('Hello from the other side of the room. 🌊').wait_for()
+        page.locator('#result').get_by_text('Hello from the other side of the room. 🌊').wait_for()
         self.assertTrue(page.locator('#result').is_visible())
 
     def test_settings_and_accessible_learning_state(self):
