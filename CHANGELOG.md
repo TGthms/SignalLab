@@ -2,10 +2,13 @@
 
 ## Unreleased
 
+- Stream custom-data playback, WAV encoding and internal decoder tests in chunks; remove the five-minute generation limit. WAV export uses streamed file writing where supported.
+- Add FCC EAS-use guidance and direct links to the rule and an enforcement example.
+
 - Simplify the send and receive journeys, keep tuning available in disclosures, and move received content ahead of verification details.
 - Preserve drafts and settings when running the demo; label generated demo and loopback results.
 - Improve typography, contrast, target sizes, mobile actions, learning-topic state, and context for SAME and Morse.
-- Cap generated transmissions at five minutes before audio allocation, with guidance for longer transfers. Extract duration planning and add browser workflow regressions.
+- Extract duration planning and add browser workflow regressions.
 
 ## 0.2.4
 

@@ -74,21 +74,35 @@ class WorkflowTests(unittest.TestCase):
         self.assertEqual(page.get_by_role('button', name='Morse code', exact=True).get_attribute('aria-pressed'), 'true')
         self.assertEqual(page.get_by_role('button', name='Sound & bits', exact=True).get_attribute('aria-pressed'), 'false')
 
-    def test_large_transfer_is_explained_before_allocation(self):
+    def test_large_transfer_has_no_five_minute_cap(self):
         page = self.page
         page.get_by_role('textbox', name='Message').fill('x' * 8192)
         page.locator('.transmission-settings summary').click()
         page.get_by_label('Modem profile').select_option('resilient')
-        page.get_by_text('This transfer exceeds the 5-minute audio limit.', exact=False).wait_for()
-        self.assertTrue(page.locator('#signal-limit').is_visible())
-        page.get_by_role('button', name='Transmit').click()
-        self.assertTrue(page.get_by_role('status').filter(has_text='5-minute').first.is_visible())
+        page.wait_for_timeout(300)
+        self.assertNotEqual(page.locator('#duration-estimate').inner_text(), 'Over 5 minutes')
+        self.assertFalse(page.locator('#signal-limit').is_visible())
+
+    def test_header_stays_visible_when_scrolling(self):
+        page = self.page
+        page.get_by_role('button', name='Learn', exact=True).click()
+        page.mouse.wheel(0, 1400)
+        page.wait_for_timeout(150)
+        self.assertAlmostEqual(page.locator('.appbar').evaluate('(el) => el.getBoundingClientRect().top'), 0, delta=1)
+        self.assertEqual(page.locator('.appbar .repo-link').count(), 0)
+
+    def test_custom_stream_playback_completes(self):
+        page = self.page
+        page.get_by_role('textbox', name='Message').fill('Hi')
+        page.locator('#play').click()
+        page.wait_for_function("document.querySelector('#play-label').textContent === 'Stop'")
+        page.wait_for_function("document.querySelector('#play-label').textContent === 'Transmit'", timeout=15000)
 
     def test_same_study_context(self):
         page = self.page
         page.get_by_role('button', name='EAS / SAME', exact=True).click()
-        self.assertTrue(page.get_by_text('For study and controlled experiments').is_visible())
-        self.assertTrue(page.get_by_text('SAME tones can be recognized by alert equipment.', exact=False).is_visible())
+        self.assertTrue(page.get_by_text('EAS tones are regulated').is_visible())
+        self.assertTrue(page.get_by_text('In the U.S., FCC rules restrict transmitting EAS codes', exact=False).is_visible())
 
 if __name__ == '__main__':
     unittest.main()

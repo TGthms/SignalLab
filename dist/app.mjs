@@ -1,5 +1,6 @@
 import {makeDemo} from './demo.mjs?v=0.3.0';
-import {customDuration, validateSignalDuration} from './signal-plan.mjs?v=0.3.0';
+import {customDuration} from './signal-plan.mjs?v=0.3.2';
+import {createCustomStream,writeWavChunks} from './custom-stream.mjs?v=0.3.2';
 import {MORSE,MORSE_FREQUENCY,morsePlan,morseSignal} from './morse.mjs?v=0.2.4';
 import {PROFILES,MAX_PAYLOAD,customPreambleBytes,packet,modulate,joinAudio,sameBytes,sameHeader,wav} from './codec.mjs?v=0.2.4';
 import {attachCapture,resumeAudioContext,configureAudioSession,releaseMicrophone,ListeningWakeLock} from './capture.mjs?v=0.2.4';
@@ -13,6 +14,7 @@ let mode='custom',kind='text',page='encoder',lesson='modem',payloadFile=null,voi
 let micCtx=null,micClosing=Promise.resolve(),lastResumeAt=0;
 let ctx=null,source=null,playing=false,playToken=0,speechCancel=null;
 let worker=null,job=0,busy=false,listening=false,stream=null,capture=null,analyser=null,listenToken=0;
+let streamAck=null,customCancel=null,exporting=false,exportCancelled=false;const loadedWorklets=new WeakSet();
 let receptions=[],lastTransfer=null,activeReceptionKey=null,locationRows=[],themePreference='system',toastTimer;
 let sensitivity='normal',captureReady=false,capturedSamples=0;
 let inputHistory=null,inputMetrics=null,captureStarted=0,lastSampleAt=0,lastMeterAt=0,healthTimer=null,lastSyncAt=0;
@@ -80,7 +82,7 @@ $('#location-search').oninput=()=>{
 };
 $('#copy-header').onclick=()=>{try{copyText(currentHeader());}catch(e){toast(err(e),true);}};
 
-function setMode(next){if(playing)stopPlayback();mode=next;$('#custom-fields').hidden=mode!=='custom';$('#same-fields').hidden=mode!=='same';$('#morse-fields').hidden=mode!=='morse';['custom','same','morse'].forEach(m=>{const n=$(`#${m}-mode`);n.classList.toggle('selected',m===mode);n.setAttribute('aria-pressed',String(m===mode));});updateInspector();updatePreview();}
+function setMode(next){if(playing)stopPlayback();mode=next;$('#custom-fields').hidden=mode!=='custom';$('#same-fields').hidden=mode!=='same';$('#morse-fields').hidden=mode!=='morse';$('#same-legal-reminder').hidden=mode!=='same';['custom','same','morse'].forEach(m=>{const n=$(`#${m}-mode`);n.classList.toggle('selected',m===mode);n.setAttribute('aria-pressed',String(m===mode));});updateInspector();updatePreview();}
 $('#custom-mode').onclick=()=>setMode('custom');$('#same-mode').onclick=()=>setMode('same');$('#morse-mode').onclick=()=>setMode('morse');
 function setKind(next){if(kind!=='file')drafts[kind]=$('#message').value;kind=next;$$('[data-kind]').forEach(n=>{n.classList.toggle('active',n.dataset.kind===kind);n.setAttribute('aria-pressed',String(n.dataset.kind===kind));});$('#text-editor').hidden=kind==='file';$('#file-editor').hidden=kind!=='file';if(kind!=='file')$('#message').value=drafts[kind];$('#encoding-label').textContent=kind==='json'?'JSON / UTF-8':'UTF-8';$('#payload-label').textContent=kind==='json'?'JSON':kind==='file'?'File':'Message';updatePreview();}
 $$('[data-kind]').forEach(n=>n.onclick=()=>setKind(n.dataset.kind));
@@ -98,16 +100,10 @@ function updateUTC(){if($('#auto-time').checked)$('#issued').value=new Date().to
 function currentHeader(){return sameHeader({origin:$('#origin').value,event:$('#event').value,locations:$('#locations').value,duration:$('#duration').value,sender:$('#sender').value,date:$('#auto-time').checked?new Date():new Date($('#issued').value+'Z')});}
 updateUTC();
 function attentionSignal(sr){const a=new Float32Array(sr*8);for(let i=0;i<a.length;i++){const ramp=Math.min(1,i/(sr*.01),(a.length-1-i)/(sr*.01));a[i]=.32*(Math.sin(2*Math.PI*853*i/sr)+Math.sin(2*Math.PI*960*i/sr))*ramp;}return a;}
+function customPlan(){const {data,meta}=payload();const id=Array.from(crypto.getRandomValues(new Uint8Array(8)),b=>b.toString(16).padStart(2,'0')).join('');return {data,meta,id,total:+$('#repeat').value,profile:PROFILES[$('#profile').value]};}
 function buildSignal(){
   const sr=48000;
   if(mode==='morse')return morseSignal($('#morse-message').value,+$('#morse-wpm').value,sr);
-  if(mode==='custom'){
-    const {data,meta}=payload(),total=+$('#repeat').value,profile=PROFILES[$('#profile').value];
-    validateSignalDuration(customDuration(data,meta,profile,total));
-    const id=Array.from(crypto.getRandomValues(new Uint8Array(8)),b=>b.toString(16).padStart(2,'0')).join('');
-    const parts=Array.from({length:total},(_,index)=>modulate(packet(data,meta,{total,index,id,preambleBytes:customPreambleBytes(profile,index)}),profile,sr));
-    return{samples:joinAudio(parts,sr,.65),sr,total,id};
-  }
   updateUTC();const header=currentHeader(),padding=Math.round(.18*sr);
   const burst=modulate(sameBytes(header),PROFILES.same,sr).slice(padding,-padding),end=modulate(sameBytes('NNNN'),PROFILES.same,sr).slice(padding,-padding);
   const heads=joinAudio([burst,burst,burst],sr,1),ends=joinAudio([end,end,end],sr,1),leading=new Float32Array(sr*.25),headParts=[leading,heads];
@@ -129,7 +125,6 @@ function updatePreview(){
     if(mode==='custom'){
       const {data,meta}=payload();
       seconds=customDuration(data,meta,p,total);
-      validateSignalDuration(seconds);
       if(!playing&&!listening){previewSamples=modulate(packet(data.slice(0,160),meta,{preambleBytes:customPreambleBytes(p)}),p,12000);previewRate=12000;}
     }else if(mode==='morse'){
       const signal=buildSignal();seconds=signal.samples.length/signal.sr;signalSize=signal.normalized.length;$('#morse-code').textContent=signal.code;$('#morse-normalized').textContent=signal.normalized;$('#morse-unit').textContent=`Dot ${Math.round(signal.unit*1000)} ms · Dash ${Math.round(signal.unit*3000)} ms`;
@@ -141,7 +136,7 @@ function updatePreview(){
     }
     $('#duration-estimate').textContent=timeLabel(seconds)+(mode==='same'&&$('#speak').checked&&!voice&&$('#announcement').value.trim()?' ≈':'');
     $('#size-estimate').textContent=mode==='same'||mode==='morse'?`${signalSize} chars`:bytesLabel(signalSize);$('#size-label').textContent=mode==='morse'?'Text':mode==='same'?'Header':'Message';
-  }catch(error){$('#duration-estimate').textContent='—';$('#size-estimate').textContent=bytesLabel(size);if(!playing&&!listening)previewSamples=null;if(mode==='custom' && err(error).includes('5-minute')){$('#duration-estimate').textContent='Over 5 minutes';$('#signal-limit').textContent=err(error);$('#signal-limit').hidden=false;}if(mode==='same')$('#header-preview').textContent=err(error);if(mode==='morse'){$('#morse-code').textContent=err(error);$('#morse-normalized').textContent='—';}}
+  }catch(error){$('#duration-estimate').textContent='—';$('#size-estimate').textContent=bytesLabel(size);if(!playing&&!listening)previewSamples=null;if(mode==='same')$('#header-preview').textContent=err(error);if(mode==='morse'){$('#morse-code').textContent=err(error);$('#morse-normalized').textContent='—';}}
   if(!playing&&!listening)drawScope();
 }
 $$('#morse-message,#morse-wpm,#message,#profile,#origin,#event,#locations,#duration,#sender,#issued,#auto-time,#attention,#speak,#announcement').forEach(n=>n.addEventListener('input',()=>{if(n.id==='morse-wpm'&&!listening){$('#morse-rx-wpm').value=n.value;updateReceiverSettings();}if(n.id==='auto-time')updateUTC();if(n.id==='locations')updateLocations();clearTimeout(previewTimer);previewTimer=setTimeout(updatePreview,120);}));
@@ -178,7 +173,7 @@ function paintPlayback(){
     progress.setAttribute('aria-valuetext',`${position.toFixed(1)} of ${duration.toFixed(1)} seconds`);
   }else $('#playback-time').textContent=m?.speech?`${clockLabel(elapsed)} elapsed`:'Starting…';
 }
-function stopPlayback(){playing=false;playToken++;if(source){try{source.stop();}catch{}source=null;}window.speechSynthesis?.cancel();speechCancel?.();speechCancel=null;playbackMonitor=null;outputAnalyser=null;outputWave=null;releaseAudioSession();setPlayUI();updatePreview();}
+function stopPlayback(){playing=false;playToken++;customCancel?.();customCancel=null;if(source){try{source.stop();}catch{}source=null;}window.speechSynthesis?.cancel();speechCancel?.();speechCancel=null;playbackMonitor=null;outputAnalyser=null;outputWave=null;releaseAudioSession();setPlayUI();updatePreview();}
 async function playBuffer(samples,sr,stage='Transmission'){
   const c=await audioContext();setAudioSession(listening?'play-and-record':'playback');
   await new Promise(resolve=>{
@@ -196,15 +191,40 @@ function speak(text){return new Promise((resolve,reject)=>{
   const u=new SpeechSynthesisUtterance(text);playbackMonitor={speech:true,start:performance.now(),stage:'Spoken announcement'};setPlayUI();
   u.onend=()=>{speechCancel=null;resolve();};u.onerror=e=>{speechCancel=null;if(['canceled','interrupted'].includes(e.error))resolve();else reject(Error('Speech synthesis failed. Attach a recording instead.'));};speechCancel=resolve;window.speechSynthesis.speak(u);
 });}
+async function playCustom(plan,token){
+  const c=await audioContext();if(token!==playToken)return;
+  const duration=createCustomStream(plan.data,plan.meta,plan.profile,plan.total,plan.id,c.sampleRate).duration;
+  let node,finish=()=>{};
+  if(c.audioWorklet && typeof AudioWorkletNode!=='undefined'){
+    try{if(!loadedWorklets.has(c)){await c.audioWorklet.addModule(new URL('./custom-worklet.mjs?v=0.3.2',import.meta.url));loadedWorklets.add(c);}
+    if(token!==playToken)return;
+    node=new AudioWorkletNode(c,'signal-lab-custom-transmitter',{numberOfInputs:0,numberOfOutputs:1,outputChannelCount:[1],processorOptions:plan});}catch(error){if(!c.createScriptProcessor)throw error;}
+  }
+  if(!node && c.createScriptProcessor){
+    const generator=createCustomStream(plan.data,plan.meta,plan.profile,plan.total,plan.id,c.sampleRate);node=c.createScriptProcessor(4096,0,1);
+    node.onaudioprocess=e=>{const out=e.outputBuffer.getChannelData(0);generator.readInto(out);if(generator.done)finish();};
+  }else if(!node)throw Error('This browser cannot stream audio playback. Try a current standalone browser.');
+  const monitor=c.createAnalyser();monitor.fftSize=2048;node.connect(monitor);monitor.connect(c.destination);outputAnalyser=monitor;outputWave=new Float32Array(monitor.fftSize);
+  playbackMonitor={context:c,start:c.currentTime,duration,stage:'Transmission'};setPlayUI();
+  await new Promise((resolve,reject)=>{let settled=false;finish=error=>{if(settled)return;settled=true;node.disconnect();monitor.disconnect();if(outputAnalyser===monitor){outputAnalyser=null;outputWave=null;}customCancel=null;if(error)reject(error);else resolve();};customCancel=()=>finish();if(node.port){node.port.onmessage=({data})=>{if(data==='done')finish();};node.onprocessorerror=()=>finish(Error('Audio streaming failed. Try a current standalone browser.'));}});
+}
+async function exportCustom(plan){
+  const generator=createCustomStream(plan.data,plan.meta,plan.profile,plan.total,plan.id),parts=[];let writer;
+  if(window.showSaveFilePicker){const handle=await window.showSaveFilePicker({suggestedName:'signal-lab-message.wav',types:[{description:'WAV audio',accept:{'audio/wav':['.wav']}}]});writer=await handle.createWritable();}
+  const append=async bytes=>{if(writer)await writer.write(bytes);else parts.push(bytes);};
+  try{await writeWavChunks(generator,append,{cancelled:()=>exportCancelled,onProgress:progress=>$('#export-status').textContent=`Preparing WAV · ${Math.round(progress*100)}%`,yieldControl:()=>new Promise(resolve=>setTimeout(resolve,0))});if(writer)await writer.close();else download(new Blob(parts,{type:'audio/wav'}),'signal-lab-message.wav','audio/wav');}
+  catch(e){if(writer)await writer.abort().catch(()=>{});throw e;}
+}
 $('#play').onclick=async()=>{
   if(playing){stopPlayback();return;}
   try{
-    const signal=buildSignal();setAudioSession(listening?'play-and-record':'playback');await audioContext();playing=true;const token=++playToken;playbackMonitor=null;setPlayUI();
-    if(signal.speech){await playBuffer(signal.head,signal.sr,'SAME headers & attention');if(token!==playToken)return;await speak(signal.speech);if(token!==playToken)return;await playBuffer(signal.tail,signal.sr,'SAME end markers');}else await playBuffer(signal.samples,signal.sr);
+    const signal=mode==='custom'?null:buildSignal(),plan=mode==='custom'?customPlan():null;setAudioSession(listening?'play-and-record':'playback');await audioContext();playing=true;const token=++playToken;playbackMonitor=null;setPlayUI();
+    if(plan)await playCustom(plan,token);else if(signal.speech){await playBuffer(signal.head,signal.sr,'SAME headers & attention');if(token!==playToken)return;await speak(signal.speech);if(token!==playToken)return;await playBuffer(signal.tail,signal.sr,'SAME end markers');}else await playBuffer(signal.samples,signal.sr);
     if(token===playToken){playing=false;source=null;playbackMonitor=null;releaseAudioSession();setPlayUI();updatePreview();}
   }catch(e){stopPlayback();toast(err(e),true);}
 };
-$('#export').onclick=()=>{try{const signal=buildSignal();download(wav(signal.samples,signal.sr),mode==='morse'?'signal-lab-morse.wav':mode==='same'?'signal-lab-same-study.wav':'signal-lab-message.wav','audio/wav');toast(signal.speech?'WAV saved. To include speech in the file, attach recorded audio.':'WAV exported, including the declared copy plan.');}catch(e){toast(err(e),true);}};
+$('#cancel-export').onclick=()=>{exportCancelled=true;$('#export-status').textContent='Cancelling WAV export…';};
+$('#export').onclick=async()=>{if(exporting)return;exporting=true;exportCancelled=false;$('#export').disabled=true;try{if(mode==='custom'){$('#export-status').hidden=false;$('#cancel-export').hidden=false;$('#export-status').textContent=window.showSaveFilePicker?'Preparing WAV…':'Preparing WAV in memory; large files may take time.';await exportCustom(customPlan());toast('WAV exported.');}else{const signal=buildSignal();download(wav(signal.samples,signal.sr),mode==='morse'?'signal-lab-morse.wav':'signal-lab-same-study.wav','audio/wav');toast(signal.speech?'WAV saved. To include speech in the file, attach recorded audio.':'WAV exported.');}}catch(e){if(e.name!=='AbortError')toast(err(e),true);}finally{exporting=false;$('#export').disabled=false;$('#export-status').hidden=true;$('#cancel-export').hidden=true;}};
 window.addEventListener('keydown',e=>{if(e.code==='Space'&&!e.repeat&&page==='encoder'&&!['INPUT','TEXTAREA','SELECT','BUTTON','SUMMARY'].includes(document.activeElement?.tagName)&&!document.activeElement?.isContentEditable){e.preventDefault();$('#play').click();}});
 for(const [id,freq]of [['bit-zero',1200],['bit-one',2400]])$(('#'+id)).onclick=async()=>{try{setAudioSession(listening?'play-and-record':'playback');const c=await audioContext(),o=c.createOscillator(),v=c.createGain();o.frequency.value=freq;o.connect(v);v.connect(c.destination);v.gain.setValueAtTime(0,c.currentTime);v.gain.linearRampToValueAtTime(.12,c.currentTime+.02);v.gain.setValueAtTime(.12,c.currentTime+.45);v.gain.linearRampToValueAtTime(0,c.currentTime+.5);o.start();o.stop(c.currentTime+.51);o.onended=()=>{o.disconnect();v.disconnect();if(!playing)releaseAudioSession();};}catch(e){if(!playing)releaseAudioSession();toast(err(e),true);}};
 $('#byte-character').oninput=()=>{const s=$('#byte-character').value,bytes=utf.encode(s);$('#byte-output').textContent=bytes.length?Array.from(bytes,b=>`${b.toString(16).padStart(2,'0').toUpperCase()} → ${b.toString(2).padStart(8,'0')}`).join(' / '):'Type a character to see its UTF-8 bytes.';};
@@ -212,23 +232,24 @@ $('#byte-character').oninput=()=>{const s=$('#byte-character').value,bytes=utf.e
 function status(message,state='ready'){$('#rx-status').textContent=message;$('#rx-dot').classList.toggle('active',state==='active');$('#rx-dot').classList.toggle('error',state==='error');}
 function setBusy(value){busy=value;for(const id of ['loopback','demo','decoder-demo','audio-file'])$('#'+id).disabled=value||listening;$('#listen').disabled=value;$('.import-audio').classList.toggle('disabled',value||listening);}
 function makeWorker(sr,inputKind='recording'){
-  worker?.terminate();worker=new Worker(new URL('./receive-worker.mjs?v=0.2.4',import.meta.url),{type:'module'});const current=++job;lastTransfer=null;activeReceptionKey=null;lastSyncAt=0;$('#decode-stage').textContent='Waiting for a signal';
+  worker?.terminate();worker=new Worker(new URL('./receive-worker.mjs?v=0.3.2',import.meta.url),{type:'module'});const current=++job;lastTransfer=null;activeReceptionKey=null;lastSyncAt=0;$('#decode-stage').textContent='Waiting for a signal';
   $('#copy-progress').hidden=true;$('#result').hidden=true;$('#result-source').hidden=true;$('#empty-result').hidden=false;
   worker.onmessage=({data})=>{
     if(data.job!==current)return;
-    if(data.type==='transfer')receiveCustom(data.transfer,current);
+    if(data.type==='audio-ack'){streamAck?.();streamAck=null;}
+    else if(data.type==='transfer')receiveCustom(data.transfer,current);
     else if(data.type==='same-transfer')receiveSame(data.transfer,current);
     else if(data.type==='legacy')receiveLegacy(data.frame,current);
     else if(data.type==='morse-transfer')receiveTracked(data.transfer,current);
     else if(data.type==='sync'){if(inputKind==='microphone'&&!listening)return;lastSyncAt=performance.now();$('#decode-stage').textContent=`${data.profile} sync detected`;status(`${data.profile}: signal lock. Reading header…`,'active');}
     else if(data.type==='done'){
-      setBusy(false);
+      $('#cancel-test').hidden=true;setBusy(false);
       if(inputKind==='microphone'&&!listening){resetInputMonitor();status(lastTransfer?'Microphone stopped. '+transferStatus(lastTransfer):'Microphone stopped. No valid message received this session.');return;}
       if(lastTransfer)status(transferStatus(lastTransfer),lastTransfer.state==='conflict'?'error':'ready');
       else status('No complete signal found. Try a cleaner recording or the Resilient profile.','error');
     }
   };
-  worker.onerror=e=>{setBusy(false);cleanupMicrophone();status('Decoder stopped. Reload the app and try again.','error');toast(e.message||'Audio worker failed.',true);};
+  worker.onerror=e=>{streamAck?.(true);streamAck=null;setBusy(false);cleanupMicrophone();status('Decoder stopped. Reload the app and try again.','error');toast(e.message||'Audio worker failed.',true);};
   worker.postMessage({type:'init',job:current,sr,sensitivity,morseWpm:+$('#morse-rx-wpm').value});return current;
 }
 try{sensitivity=localStorage.getItem('signal-lab-sensitivity')||'normal';}catch{}
@@ -247,7 +268,12 @@ async function decodeSignal(samples,sr,label){
   const length=sr*2;for(let at=0;at<samples.length;at+=length){const part=samples.slice(at,at+length);worker.postMessage({type:'audio',job:current,samples:part,done:at+length>=samples.length},[part.buffer]);}
   previewSamples=samples;previewRate=sr;drawScope();
 }
-$('#loopback').onclick=async()=>{try{if(mode==='morse')$('#morse-rx-wpm').value=$('#morse-wpm').value;const s=buildSignal();await decodeSignal(s.samples,s.sr,'generated audio');}catch(e){setBusy(false);toast(err(e),true);}};
+async function decodeCustom(plan){
+  if(listening)throw Error('Stop the microphone before testing a signal.');setBusy(true);const generator=createCustomStream(plan.data,plan.meta,plan.profile,plan.total,plan.id),current=makeWorker(generator.sr);$('#result-source').textContent='Test result · generated on this device';$('#result-source').hidden=false;showPage('decoder');
+  $('#cancel-test').hidden=false;let sent=0;while(!generator.done&&current===job){const chunk=generator.read(generator.sr*2);sent+=chunk.length;status(`Testing generated audio · ${Math.round(sent/generator.length*100)}%`,'active');await new Promise((resolve,reject)=>{streamAck=failed=>failed?reject(Error('Decoder stopped.')):resolve();worker.postMessage({type:'audio',job:current,samples:chunk,done:generator.done,ack:true},[chunk.buffer]);});}
+}
+$('#cancel-test').onclick=()=>{job++;worker?.terminate();worker=null;streamAck?.();streamAck=null;$('#cancel-test').hidden=true;setBusy(false);status('Test cancelled.');};
+$('#loopback').onclick=async()=>{try{if(mode==='custom')await decodeCustom(customPlan());else{if(mode==='morse')$('#morse-rx-wpm').value=$('#morse-wpm').value;const s=buildSignal();await decodeSignal(s.samples,s.sr,'generated audio');}}catch(e){setBusy(false);toast(err(e),true);}};
 async function demo(){try{const id=Array.from(crypto.getRandomValues(new Uint8Array(8)),b=>b.toString(16).padStart(2,'0')).join('');const signal=makeDemo(id);await decodeSignal(signal.samples,signal.sr,'the demo waveform');}catch(e){setBusy(false);toast(err(e),true);}}
 $('#demo').onclick=demo;$('#decoder-demo').onclick=demo;
 $('#audio-file').onchange=async e=>{

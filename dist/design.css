@@ -5,7 +5,7 @@
 :root[data-theme=dark]{--bg:#171b19;--surface:#202622;--surface2:#1a201c;--surface3:#303a32;--text:#edf0e8;--muted:#b4bfb1;--faint:#9aa899;--line:#3c4940;--line2:#303d34;--accent:#f29b75;--accent-hover:#ffb596;--accent-wash:#443126;--good:#c1e5ac;--good-wash:#263a2b;--scope:#18231c;--trace:#c8ecac}
 
 body{font-size:15px;line-height:1.55}
-.appbar{height:72px}
+.appbar{height:72px;position:sticky;top:0;z-index:20}
 .brand strong{font-size:18px}
 .app-version,.repo-link,.theme-control select{font-size:11px}
 .mode-nav{margin:22px 0 26px}
@@ -177,3 +177,7 @@ footer{font-size:11px;letter-spacing:0}
 @media(max-width:480px){textarea,select,input[type=text],input:not([type]),input[type=search],input[type=datetime-local],.field-row select{font-size:16px}}
 .app-layout.reading{grid-template-columns:minmax(0,780px)}
 .app-layout.reading .instrument-rail{display:none}
+.study-context a{color:var(--accent);font-size:13px;text-decoration:underline;text-underline-offset:3px}
+#cancel-test{margin-top:14px}
+.same-legal-reminder{font-size:13px;line-height:1.5;color:var(--muted);margin:14px 0 0}.same-legal-reminder a{color:var(--accent);text-decoration:underline;text-underline-offset:3px}
+.export-status{font-size:13px;color:var(--muted);margin-top:12px}#cancel-export{margin-top:8px}

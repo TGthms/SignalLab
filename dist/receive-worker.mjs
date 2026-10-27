@@ -11,6 +11,6 @@ self.onmessage=({data})=>{
   }else if(data.type==='sensitivity'&&data.job===job){receiver?.setSensitivity(data.sensitivity);morse?.setSensitivity(data.sensitivity);
   }else if(data.type==='morse-speed'&&data.job===job){morse?.setWpm(data.wpm);
   }else if(data.type==='audio'&&data.job===job){
-    receiver?.feed(data.samples);morse?.feed(data.samples);samplesProcessed+=data.samples.length;tracker.tick(samplesProcessed,sampleRate);if(data.done){tracker.finish();same.finish();morse.finish();self.postMessage({type:'done',job});}
+    receiver?.feed(data.samples);morse?.feed(data.samples);samplesProcessed+=data.samples.length;tracker.tick(samplesProcessed,sampleRate);if(data.ack)self.postMessage({type:'audio-ack',job});if(data.done){tracker.finish();same.finish();morse.finish();self.postMessage({type:'done',job});}
   }else if(data.type==='finish'&&data.job===job){tracker?.finish();same?.finish();morse?.finish();self.postMessage({type:'done',job});}
 };

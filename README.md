@@ -15,7 +15,7 @@ For a one-device experiment, use **Run a demo** or the encoder's **Test in decod
 - **Light, dark, and system themes** with a saved preference.
 - **Three modem profiles:** Resilient (100 bit/s), Balanced (300 bit/s), Fast (600 bit/s).
 - **Declared repetition:** 1×, 2×, or 3×. The checksummed opening header declares a transfer ID, total copies, and copy index before the payload arrives. Each full copy must pass CRC-32. The receiver compares metadata and original payload bytes, counting only distinct indices. Missing copies remain incomplete; differing copies produce a conflict.
-- **WAV export and recording import**, plus original-byte payload downloads. Files are limited to 8 KiB; custom-data transmissions to five minutes; recordings to five minutes / 50 MB.
+- **WAV export and recording import**, plus original-byte payload downloads. Files are limited to 8 KiB; recordings imported into the decoder are limited to five minutes / 50 MB.
 - **Morse:** text at 5–35 WPM and a 700 Hz keyed tone, dots/dashes preview, WAV export and streaming microphone/file decoding at a matching receive speed. Learn includes complete supported-character tables with tap-to-hear examples, timing explanations and ITU/ARRL resources. Morse has no checksum or copy plan; results are labelled decoded, never CRC-verified.
 - **SAME studies:** actual SAME modulation, editable header fields, three repeated headers/end bursts, optional attention signal, attached announcement audio, and browser speech during live playback.
 - **Local educational lookup:** a bundled NOAA SAME directory names geographic areas and explains PSSCCC, FIPS state/county identifiers, and locally defined county partitions.
@@ -57,22 +57,23 @@ node tests/acoustic.test.mjs
 
 Tests cover noisy unaligned transfers at 44.1/48 kHz; UTF-8 and binary round trips; checksum failure; 8 KiB transfers at ±0.1% clock drift; header-first repeat plans; independent copy counts; missing, corrupt, and conflicting copies; live timeout; SAME physical-burst counting; geographic lookup; actual worklet processor batching; capture fallback; and cleanup.
 
-GitHub Actions also runs browser workflow checks with Playwright, including mobile layout, demo preservation, accessibility state, and allocation guidance. GitHub Actions runs these checks before deploying `dist/` to GitHub Pages. Pushes to `main` publish the HTTPS app. No secrets or server services are required.
+GitHub Actions also runs browser workflow checks with Playwright, including mobile layout, demo preservation, accessibility state, and large-transfer behavior. GitHub Actions runs these checks before deploying `dist/` to GitHub Pages. Pushes to `main` publish the HTTPS app. No secrets or server services are required.
 
 ## Limits
 
 Custom data uses Signal Lab protocol v2; v1 packets can still be decoded, with a legacy indicator because they do not declare a repetition plan. There is no encryption, sender authentication, forward error correction, automatic acknowledgement, or retransmission. CRC-32 checks accidental corruption; it is not an authenticity check.
 
-SAME is a study implementation, not certified emergency alert equipment. It compares distinct complete parsed headers and counts repeated end markers. It does not reconstruct partially corrupt SAME headers by bitwise majority or transcribe speech. SAME's fixed three-burst format is preserved; custom repetition fields are never inserted into SAME audio.
+SAME is a study implementation, not certified emergency alert equipment. In the U.S., [47 CFR § 11.45](https://www.ecfr.gov/current/title-47/section-11.45) restricts transmitting EAS codes and attention signals, including recordings or simulations, except for specified authorized uses. A disclaimer or test label is not authorization. Do not broadcast, stream, publish, or feed these signals into alert systems unless your use is authorized. Local playback, recording and sharing may also raise legal or safety questions. Rules may differ outside the U.S.; consult qualified counsel for your use. The [FCC has enforced this rule](https://docs.fcc.gov/public/attachments/DA-24-1285A1_Rcd.pdf). It compares distinct complete parsed headers and counts repeated end markers. It does not reconstruct partially corrupt SAME headers by bitwise majority or transcribe speech. SAME's fixed three-burst format is preserved; custom repetition fields are never inserted into SAME audio.
 
-Browser speech is live playback only. Attach recorded audio (up to 90 seconds) to include an announcement in WAV exports. Custom-data transmissions are capped at five minutes to bound browser memory use. Some 8 KiB messages therefore require a faster profile or fewer copies. Large payloads take minutes. Imported recordings and microphone audio stay on the device. Received data is displayed as text or offered for download; it is not automatically executed. Receptions are cleared on reload.
+Browser speech is live playback only. Attach recorded audio (up to 90 seconds) to include an announcement in WAV exports. Custom-data playback and internal tests generate audio in bounded chunks, with no five-minute transmission cap. WAV export streams to disk where the browser supports the File System Access API; other browsers assemble the WAV in memory and may struggle with large exports. Imported recordings still have a five-minute / 50 MB limit. Large payloads can take tens of minutes. Imported recordings and microphone audio stay on the device. Received data is displayed as text or offered for download; it is not automatically executed. Receptions are cleared on reload.
 
 The NOAA location directory is a dated snapshot and includes legacy entries. Names are presented as NOAA lists them, with state names expanded; current coverage and partition definitions should be checked against NOAA's live tables. A six-digit format alone does not establish that a code is currently assigned.
 
 ## Layout
 
 - `dist/app.mjs`: application state, playback, reception UI, themes, and education.
-- `dist/signal-plan.mjs`: transfer duration estimation and the allocation guard.
+- `dist/signal-plan.mjs`: transfer duration estimation.
+- `dist/custom-stream.mjs`, `dist/custom-worklet.mjs`: incremental modulation, WAV encoding, and streamed playback.
 - `dist/demo.mjs`: independent example waveform generation.
 - `dist/style.css`, `dist/design.css`: component styles and the visual design layer.
 - `dist/codec.mjs`: modulation, streaming demodulation, CRC, and framing.
