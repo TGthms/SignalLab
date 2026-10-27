@@ -135,5 +135,37 @@ class WorkflowTests(unittest.TestCase):
         page.get_by_role('button', name='Custom data', exact=True).click()
         self.assertTrue(page.locator('#export').is_visible())
 
+    def test_eas_playback_confirmation_and_escape(self):
+        page = self.page
+        page.get_by_role('button', name='EAS / SAME', exact=True).click()
+        page.evaluate("""() => {
+            window.__testAudioStarts = 0;
+            AudioContext.prototype.createBufferSource = function() {
+                return { connect() {}, disconnect() {}, start() {
+                    window.__testAudioStarts++;
+                    queueMicrotask(() => this.onended && this.onended());
+                }};
+            };
+        }""")
+        page.locator('#play').click()
+        dialog = page.get_by_role('alertdialog', name='Before playing EAS tones')
+        dialog.wait_for()
+        self.assertTrue(page.locator('#eas-play-cancel').evaluate('(el) => document.activeElement === el'))
+        self.assertEqual(page.evaluate('window.__testAudioStarts'), 0)
+        page.keyboard.press('Escape')
+        self.assertFalse(dialog.is_visible())
+        self.assertEqual(page.evaluate('window.__testAudioStarts'), 0)
+        page.locator('#play').click()
+        dialog.wait_for()
+        page.locator('#eas-play-cancel').click()
+        self.assertFalse(dialog.is_visible())
+        self.assertEqual(page.evaluate('window.__testAudioStarts'), 0)
+        page.locator('#play').click()
+        dialog.wait_for()
+        page.locator('#eas-play-confirm').click()
+        page.wait_for_function('window.__testAudioStarts === 1')
+        self.assertFalse(dialog.is_visible())
+        self.assertEqual(page.evaluate('window.__testAudioStarts'), 1)
+
 if __name__ == '__main__':
     unittest.main()

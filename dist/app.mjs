@@ -216,17 +216,29 @@ async function exportCustom(plan){
   try{await writeWavChunks(generator,append,{cancelled:()=>exportCancelled,onProgress:progress=>$('#export-status').textContent=`Preparing WAV · ${Math.round(progress*100)}%`,yieldControl:()=>new Promise(resolve=>setTimeout(resolve,0))});if(writer)await writer.close();else download(new Blob(parts,{type:'audio/wav'}),'signal-lab-message.wav','audio/wav');}
   catch(e){if(writer)await writer.abort().catch(()=>{});throw e;}
 }
-$('#play').onclick=async()=>{
-  if(playing){stopPlayback();return;}
+async function startPlayback(){
   try{
     const signal=mode==='custom'?null:buildSignal(),plan=mode==='custom'?customPlan():null;setAudioSession(listening?'play-and-record':'playback');await audioContext();playing=true;const token=++playToken;playbackMonitor=null;setPlayUI();
     if(plan)await playCustom(plan,token);else if(signal.speech){await playBuffer(signal.head,signal.sr,'SAME headers & attention');if(token!==playToken)return;await speak(signal.speech);if(token!==playToken)return;await playBuffer(signal.tail,signal.sr,'SAME end markers');}else await playBuffer(signal.samples,signal.sr);
     if(token===playToken){playing=false;source=null;playbackMonitor=null;releaseAudioSession();setPlayUI();updatePreview();}
   }catch(e){stopPlayback();toast(err(e),true);}
+}
+$('#play').onclick=()=>{
+  if(playing){stopPlayback();return;}
+  if(mode==='same'){
+    const dialog=$('#eas-play-dialog');
+    if(dialog.open)return;
+    if(typeof dialog.showModal!=='function'){toast('This browser cannot show the EAS safety confirmation. Use the silent decoder test or a current browser.',true);return;}
+    dialog.showModal();
+    return;
+  }
+  startPlayback();
 };
+$('#eas-play-cancel').onclick=()=>$('#eas-play-dialog').close();
+$('#eas-play-confirm').onclick=()=>{const dialog=$('#eas-play-dialog');if(!dialog.open)return;dialog.close();if(mode==='same'&&!playing)startPlayback();};
 $('#cancel-export').onclick=()=>{exportCancelled=true;$('#export-status').textContent='Cancelling WAV export…';};
 $('#export').onclick=async()=>{if(mode==='same'){toast('EAS WAV export is unavailable. Use the silent decoder test to study the signal.',true);return;}if(exporting)return;exporting=true;exportCancelled=false;$('#export').disabled=true;try{if(mode==='custom'){$('#export-status').hidden=false;$('#cancel-export').hidden=false;$('#export-status').textContent=window.showSaveFilePicker?'Preparing WAV…':'Preparing WAV in memory; large files may take time.';await exportCustom(customPlan());toast('WAV exported.');}else{const signal=buildSignal();download(wav(signal.samples,signal.sr),'signal-lab-morse.wav','audio/wav');toast('WAV exported.');}}catch(e){if(e.name!=='AbortError')toast(err(e),true);}finally{exporting=false;$('#export').disabled=false;$('#export-status').hidden=true;$('#cancel-export').hidden=true;}};
-window.addEventListener('keydown',e=>{if(e.code==='Space'&&!e.repeat&&page==='encoder'&&!['INPUT','TEXTAREA','SELECT','BUTTON','SUMMARY'].includes(document.activeElement?.tagName)&&!document.activeElement?.isContentEditable){e.preventDefault();$('#play').click();}});
+window.addEventListener('keydown',e=>{if(e.code==='Space'&&!e.repeat&&!$('#eas-play-dialog').open&&page==='encoder'&&!['INPUT','TEXTAREA','SELECT','BUTTON','SUMMARY'].includes(document.activeElement?.tagName)&&!document.activeElement?.isContentEditable){e.preventDefault();$('#play').click();}});
 for(const [id,freq]of [['bit-zero',1200],['bit-one',2400]])$(('#'+id)).onclick=async()=>{try{setAudioSession(listening?'play-and-record':'playback');const c=await audioContext(),o=c.createOscillator(),v=c.createGain();o.frequency.value=freq;o.connect(v);v.connect(c.destination);v.gain.setValueAtTime(0,c.currentTime);v.gain.linearRampToValueAtTime(.12,c.currentTime+.02);v.gain.setValueAtTime(.12,c.currentTime+.45);v.gain.linearRampToValueAtTime(0,c.currentTime+.5);o.start();o.stop(c.currentTime+.51);o.onended=()=>{o.disconnect();v.disconnect();if(!playing)releaseAudioSession();};}catch(e){if(!playing)releaseAudioSession();toast(err(e),true);}};
 $('#byte-character').oninput=()=>{const s=$('#byte-character').value,bytes=utf.encode(s);$('#byte-output').textContent=bytes.length?Array.from(bytes,b=>`${b.toString(16).padStart(2,'0').toUpperCase()} → ${b.toString(2).padStart(8,'0')}`).join(' / '):'Type a character to see its UTF-8 bytes.';};
 
