@@ -1,6 +1,6 @@
 # Signal Lab
 
-A compact browser app for sending data through sound and learning how audio modems work. Includes an EAS / SAME study mode.
+A compact browser app for sending data through sound and learning how audio modems work. Includes EAS / SAME studies and International Morse code.
 
 **Live app:** https://tgthms.github.io/SignalLab/
 
@@ -16,6 +16,7 @@ For a one-device experiment, use **Run a demo** or the encoder's **Test in decod
 - **Three modem profiles:** Resilient (100 bit/s), Balanced (300 bit/s), Fast (600 bit/s).
 - **Declared repetition:** 1×, 2×, or 3×. The checksummed opening header declares a transfer ID, total copies, and copy index before the payload arrives. Each full copy must pass CRC-32. The receiver compares metadata and original payload bytes, counting only distinct indices. Missing copies remain incomplete; differing copies produce a conflict.
 - **WAV export and recording import**, plus original-byte payload downloads. Files are limited to 8 KiB; recordings to five minutes / 50 MB.
+- **Morse:** text at 5–35 WPM and a 700 Hz keyed tone, dots/dashes preview, WAV export and streaming microphone/file decoding at a matching receive speed. Learn includes complete supported-character tables with tap-to-hear examples, timing explanations and ITU/ARRL resources. Morse has no checksum or copy plan; results are labelled decoded, never CRC-verified.
 - **SAME studies:** actual SAME modulation, editable header fields, three repeated headers/end bursts, optional attention signal, attached announcement audio, and browser speech during live playback.
 - **Local educational lookup:** a bundled NOAA SAME directory names geographic areas and explains PSSCCC, FIPS state/county identifiers, and locally defined county partitions.
 - **Learn:** interactive bit tones, a UTF-8 byte inspector, annotated SAME headers, verification explanations, and reception tips.
@@ -90,7 +91,7 @@ The NOAA location directory is a dated snapshot and includes legacy entries. Nam
 
 The preserved `.openai/hosting.json` records an earlier, unavailable Sites registration. Active hosting is GitHub Pages; that Sites identity is not used by the deployment workflow.
 
-## Receiver tuning (v0.2.3)
+## Receiver tuning (v0.2.4)
 
 Wait for **Microphone ready** before transmitting. Normal sensitivity balances the two custom tone levels automatically; Higher lowers the acquisition floor and permits two damaged sync bits after a recognizable preamble. All payloads still require the full checksum. Copy slots distinguish a missed header, header-only reception, a checksum failure, and a verified copy. The first custom copy provides about 1.8 seconds of training tones; later copies use 0.32–0.64 seconds. The initial lead remains useful for settling a phone input path.
 
@@ -99,3 +100,13 @@ On browsers with the Audio Session API, playback declares `playback` intent and 
 Automated checks cover channel coloration, echoes, startup truncation, sensitivity and copy diagnostics. Specific speaker/phone combinations and silent-switch behavior require physical testing.
 
 The microphone stays enabled between results and across in-app pages. Custom transfers have independent IDs and log entries, including header-only failures; late status changes cannot replace a newer message on screen. Multiple SAME messages are counted in independent three-header sets. Imports and demos require stopping the live microphone first, so they never silently replace its decoder. A screen wake lock is requested while listening and released on Stop. Context interruptions are retried while visible; hardware disconnection or revoked permission still requires attention, and iOS may suspend capture in the background or after a manual screen lock.
+
+## Waveform and playback display
+
+The idle view is a 25 ms sample of the generated signal. During playback an AnalyserNode reads actual output samples; a separate labelled timeline shows elapsed/total buffer time from the audio clock. Browser speech has an elapsed timer and an explicit unavailable-waveform label because it does not pass through that audio graph. Mic input takes priority in the waveform when listening and transmitting simultaneously. Playback level is controlled with system media volume; there is no app volume slider. Stop clears the input meter and live guidance while keeping saved reception results.
+
+## Morse learning
+
+Choose Encoder → Morse, set a speed and transmit supported uppercase text. On the receiving device, match **Morse receive speed** (15 WPM by default). Tone detection targets 700 Hz; this is not a general arbitrary-pitch or automatic-speed CW reader. A long quiet gap ends a Morse message and the live session stays open. The supported alphabet, digits, É and punctuation appear in Learn → Morse code; tap any entry to hear it at 15 WPM.
+
+References: [ITU-R M.1677-1](https://www.itu.int/rec/R-REC-M.1677-1-200910-I/en), [ARRL learning Morse](https://www.arrl.org/learning-morse-code/), [W1AW practice audio and text](https://www.arrl.org/code-practice-files).

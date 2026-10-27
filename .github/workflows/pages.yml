@@ -25,6 +25,8 @@ jobs:
           node tests/acoustic.test.mjs
           node tests/acquisition.test.mjs
           node tests/session.test.mjs
+          node tests/monitor.test.mjs
+          node tests/morse.test.mjs
           node --check dist/app.mjs
           node --check dist/receive-worker.mjs
       - name: Configure Pages

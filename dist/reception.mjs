@@ -11,7 +11,8 @@ export function measureInput(samples,sampleRate){
   const divisor=samples.length*sum;
   const fraction=frequencies=>divisor?Math.min(1,2*frequencies.reduce((total,f)=>total+tonePower(f),0)/divisor):0;
   const custom=fraction([1200,2400]),same=fraction([1562.5,4/.00192]);
-  return{rms,peak,db:rms?Math.max(-120,20*Math.log10(rms)):-120,custom,same,clipping:peak>=.98};
+  const morse=fraction([700]);
+  return{rms,peak,db:rms?Math.max(-120,20*Math.log10(rms)):-120,custom,same,morse,clipping:peak>=.98};
 }
 
 export class PcmHistory {

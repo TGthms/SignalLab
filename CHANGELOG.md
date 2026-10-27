@@ -1,5 +1,14 @@
 # Changes
 
+## 0.2.4
+
+- Reset input levels, live guidance and decoder state when the microphone stops. Ignore queued sync events and keep a delayed worker completion from replacing the stopped message with recording-import advice.
+- Remove the app volume control; output and browser speech use system media volume.
+- Read playback waveforms from an output AnalyserNode, remove the overlaid total-duration cursor and show a separate labelled audio-clock timeline. Mark unknown-duration browser speech honestly.
+- Add International Morse encoding at 5–35 WPM with a 700 Hz tone, canonical text/dots-dashes preview, WAV export and streaming microphone/file decoding at a matching receive speed. Keep Morse results separate from checksum verification.
+- Add supported letters, digits, É and punctuation tables with tap-to-hear examples; explain timing, WPM, receive settings and limits; link official ITU and ARRL learning/practice resources.
+- Verify mixed custom/Morse/SAME messages in one session, all Morse table characters and speeds at two sample rates, live-output graph wiring and the stopped-monitor regression.
+
 ## 0.2.3
 
 - Give microphone capture a dedicated AudioContext, and fully stop tracks, disconnect capture nodes and close the context on Stop and initialization failure. Wait for teardown before reuse and restore the audio-session category after release.

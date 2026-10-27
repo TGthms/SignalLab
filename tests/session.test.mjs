@@ -2,8 +2,9 @@ import assert from 'node:assert/strict';
 import vm from 'node:vm';
 import {readFile} from 'node:fs/promises';
 import {packet,modulate,joinAudio,PROFILES,customPreambleBytes,sameHeader,sameBytes} from '../dist/codec.mjs';
+const {morseSignal}=await import('../dist/morse.mjs');
 const events=[];globalThis.self={postMessage:event=>events.push(structuredClone(event))};
-await import('../dist/receive-worker.mjs?v=0.2.3');
+await import('../dist/receive-worker.mjs?v=0.2.4');
 const send=data=>self.onmessage({data}),sr=48000,meta={kind:'text',mime:'text/plain'};
 send({type:'init',job:7,sr,sensitivity:'normal'});
 const parts=[],ids=['1000000000000001','2000000000000002','3000000000000003'];
@@ -11,6 +12,7 @@ for(let message=0;message<3;message++){
   const profile=[PROFILES.balanced,PROFILES.resilient,PROFILES.fast][message],total=[3,1,2][message];
   for(let index=0;index<total;index++)parts.push(modulate(packet(new TextEncoder().encode(`Message ${message+1}`),meta,{id:ids[message],total,index,preambleBytes:customPreambleBytes(profile,index)}),profile));
 }
+for(const text of ['MORSE ONE','MORSE TWO'])parts.push(morseSignal(text).samples);
 const header=sameHeader({date:new Date('2026-10-26T05:45:00Z')});
 // Two SAME messages without end bursts still form independent sets of three.
 for(let message=0;message<2;message++)for(let copy=0;copy<3;copy++)parts.push(modulate(sameBytes(header),PROFILES.same));
@@ -23,8 +25,9 @@ for(let i=0;i<ids.length;i++){
 }
 const sameIds=new Set(events.filter(e=>e.type==='same-transfer').map(e=>e.transfer.id));assert.equal(sameIds.size,2);
 for(const id of sameIds)assert.equal(events.filter(e=>e.type==='same-transfer'&&e.transfer.id===id).at(-1).transfer.state,'verified');
+const morseMessages=events.filter(e=>e.type==='morse-transfer'&&e.transfer.state==='decoded');assert.deepEqual(morseMessages.map(e=>e.transfer.text),['MORSE ONE','MORSE TWO']);
 send({type:'finish',job:7});assert.equal(events.at(-1).type,'done');
-console.log('PASS one uninterrupted worker session: 3 custom messages, mixed profiles/repeats, 2 independent SAME messages');
+console.log('PASS one uninterrupted worker session: 3 custom messages, mixed profiles/repeats, 2 Morse messages and 2 independent SAME messages');
 // Exercise the app's actual event routing with small DOM-independent stubs:
 // older timeouts must update their log entry without replacing a newer result.
 const app=await readFile(new URL('../dist/app.mjs',import.meta.url),'utf8');
