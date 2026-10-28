@@ -1,10 +1,13 @@
+import {lessonSignal,relativeSpectrum} from './lesson-signal.mjs?v=0.4.0';
+import {readWavInfo,readWavChunks} from './wav-reader.mjs?v=0.4.0';
+import {createReceiverLink,readReceiverLink} from './share-settings.mjs?v=0.4.0';
 import {makeDemo} from './demo.mjs?v=0.3.8';
 import {customDuration} from './signal-plan.mjs?v=0.3.8';
 import {createCustomStream,writeWavChunks} from './custom-stream.mjs?v=0.3.8';
 import {MORSE,MORSE_FREQUENCY,morsePlan,morseSignal} from './morse.mjs?v=0.2.4';
 import {PROFILES,phaseProfile,MAX_PAYLOAD,customPreambleBytes,packet,modulate,joinAudio,sameBytes,sameHeader,wav} from './codec.mjs?v=0.3.8';
 import {attachCapture,resumeAudioContext,configureAudioSession,releaseMicrophone,ListeningWakeLock} from './capture.mjs?v=0.2.4';
-import {measureInput,PcmHistory} from './reception.mjs?v=0.2.4';
+import {measureInput,PcmHistory} from './reception.mjs?v=0.4.0';
 import {describeLocation,searchLocations,STATES} from './locations.mjs?v=0.2.4';
 
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
@@ -45,7 +48,7 @@ function showPage(next){
   if(previous!==page){window.scrollTo(0,0);const active=document.activeElement;if(active?.closest('.page')?.hidden){const heading=$(`#page-${page} h1`);heading.tabIndex=-1;heading.focus({preventScroll:true});}}
   updateInspector();updateLayout();if(page==='encoder'&&!listening&&!playing)updatePreview();requestAnimationFrame(drawScope);
 }
-function openLesson(next){lesson=['modem','verification','same','morse','reception'].includes(next)?next:'modem';$$('.lesson').forEach(n=>n.hidden=n.id!==`lesson-${lesson}`);$$('.lesson-tabs [data-lesson]').forEach(n=>{const selected=n.dataset.lesson===lesson;n.classList.toggle('selected',selected);n.setAttribute('aria-pressed',String(selected));});showPage('learn');}
+function openLesson(next){lesson=['modem','verification','same','morse','reception'].includes(next)?next:'modem';$$('.lesson').forEach(n=>n.hidden=n.id!==`lesson-${lesson}`);$$('.lesson-tabs [data-lesson]').forEach(n=>{const selected=n.dataset.lesson===lesson;n.classList.toggle('selected',selected);n.setAttribute('aria-pressed',String(selected));});showPage('learn');if(lesson==='modem')updateExperiment();}
 $$('[data-page]').forEach(n=>n.onclick=()=>showPage(n.dataset.page));
 $('.brand').onclick=e=>{e.preventDefault();showPage('encoder');window.scrollTo(0,0);};
 $$('[data-lesson]').forEach(n=>n.onclick=()=>openLesson(n.dataset.lesson));
@@ -115,8 +118,20 @@ function buildSignal(){
   return{samples:joinAudio(parts,sr,1),sr,head,tail,header,speech:!voice&&$('#speak').checked?$('#announcement').value.trim():null};
 }
 const pLabel=value=>({balanced:'Balanced',resilient:'Resilient',fast:'Fast'}[value]||value);
+function refreshSettingsLink(){const url=createReceiverLink(location.href,{modulation:$('#modulation').value,carrier:+$('#carrier').value,rate:$('#profile').value});$('#share-link').value=url;return url;}
+const speedProfiles=['resilient','balanced','fast'];
+function updateSpeedControls(){
+  const profile=$('#profile').value,slider=$('#speed-preset'),p=PROFILES[profile];slider.value=String(speedProfiles.indexOf(profile));slider.style.setProperty('--preset-fill',`${+slider.value*50}%`);
+  slider.setAttribute('aria-valuetext',`${pLabel(profile)}, ${p.baud} bits per second`);$('#speed-preset-value').textContent=`${pLabel(profile)} · ${p.baud} bit/s`;
+  const rx=$('#rx-speed-preset'),key=speedProfiles[+rx.value]||'balanced',rp=PROFILES[key];rx.style.setProperty('--preset-fill',`${+rx.value*50}%`);
+  rx.setAttribute('aria-valuetext',`${pLabel(key)}, ${rp.baud} bits per second`);$('#rx-speed-value').textContent=`${pLabel(key)} · ${rp.baud} bit/s`;
+  rx.disabled=$('#rx-rate-auto').checked||listening||busy;$('#rx-rate-auto').disabled=listening||busy;
+}
+$('#speed-preset').oninput=()=>{$('#profile').value=speedProfiles[+$('#speed-preset').value];updatePreview();};
+$('#rx-speed-preset').oninput=()=>{updateSpeedControls();$('#shared-settings-note').hidden=true;};$('#rx-rate-auto').onchange=()=>{updateSpeedControls();updateReceiveSignalHelp();$('#shared-settings-note').hidden=true;};
+
 function updatePreview(){
-  $('#signal-limit').hidden=true;$('#signal-limit').textContent='';
+  updateSpeedControls();refreshSettingsLink();$('#signal-limit').hidden=true;$('#signal-limit').textContent='';
   const size=kind==='file'?(payloadFile?.data.length||0):utf.encode($('#message').value).length;
   $('#byte-count').textContent=size.toLocaleString();$('#byte-count').style.color=size>MAX_PAYLOAD?'var(--accent)':'';
   $('#profile-help').textContent={balanced:'Start here for short transfers between nearby devices.',resilient:'Longer symbols for a noisy channel. Three times the transfer time.',fast:'For clean recordings and controlled conditions. Shorter, less forgiving symbols.'}[$('#profile').value];
@@ -142,6 +157,8 @@ function updatePreview(){
   }catch(error){$('#duration-estimate').textContent='—';$('#size-estimate').textContent=bytesLabel(size);if(!playing&&!listening)previewSamples=null;if(mode==='same')$('#header-preview').textContent=err(error);if(mode==='morse'){$('#morse-code').textContent=err(error);$('#morse-normalized').textContent='—';}}
   if(!playing&&!listening)drawScope();updateInspector();
 }
+$('#copy-settings').onclick=()=>copyText(refreshSettingsLink());
+$('.share-settings').addEventListener('toggle',()=>{if($('.share-settings').open)refreshSettingsLink();});
 $('#signal-standard').onclick=()=>{$('#modulation').value='bfsk';$('#carrier').value='1800';updatePreview();};
 $('#signal-high').onclick=()=>{if($('#modulation').value==='bfsk')$('#modulation').value='dbpsk';$('#carrier').value='20500';updatePreview();};
 $$('#morse-message,#morse-wpm,#message,#profile,#modulation,#carrier,#origin,#event,#locations,#duration,#sender,#issued,#auto-time,#attention,#speak,#announcement').forEach(n=>n.addEventListener('input',()=>{if(n.id==='morse-wpm'&&!listening){$('#morse-rx-wpm').value=n.value;updateReceiverSettings();}if(n.id==='auto-time')updateUTC();if(n.id==='locations')updateLocations();clearTimeout(previewTimer);previewTimer=setTimeout(updatePreview,120);}));
@@ -257,17 +274,36 @@ $('#cancel-export').onclick=()=>{exportCancelled=true;$('#export-status').textCo
 $('#export').onclick=async()=>{if(mode==='same'){toast('EAS WAV export is unavailable. Use the silent decoder test to study the signal.',true);return;}if(exporting)return;exporting=true;exportCancelled=false;$('#export').disabled=true;try{if(mode==='custom'){$('#export-status').hidden=false;$('#cancel-export').hidden=false;$('#export-status').textContent=window.showSaveFilePicker?'Preparing WAV…':'Preparing WAV in memory; large files may take time.';await exportCustom(customPlan());toast('WAV exported.');}else{const signal=buildSignal();download(wav(signal.samples,signal.sr),'signal-lab-morse.wav','audio/wav');toast('WAV exported.');}}catch(e){if(e.name!=='AbortError')toast(err(e),true);}finally{exporting=false;$('#export').disabled=false;$('#export-status').hidden=true;$('#cancel-export').hidden=true;}};
 window.addEventListener('keydown',e=>{if(e.code==='Space'&&!e.repeat&&!$('#eas-play-dialog').open&&!$('#eas-attention-dialog').open&&page==='encoder'&&!['INPUT','TEXTAREA','SELECT','BUTTON','SUMMARY'].includes(document.activeElement?.tagName)&&!document.activeElement?.isContentEditable){e.preventDefault();$('#play').click();}});
 for(const [id,freq]of [['bit-zero',1200],['bit-one',2400]])$(('#'+id)).onclick=async()=>{try{setAudioSession(listening?'play-and-record':'playback');const c=await audioContext(),o=c.createOscillator(),v=c.createGain();o.frequency.value=freq;o.connect(v);v.connect(c.destination);v.gain.setValueAtTime(0,c.currentTime);v.gain.linearRampToValueAtTime(.12,c.currentTime+.02);v.gain.setValueAtTime(.12,c.currentTime+.45);v.gain.linearRampToValueAtTime(0,c.currentTime+.5);o.start();o.stop(c.currentTime+.51);o.onended=()=>{o.disconnect();v.disconnect();if(!playing)releaseAudioSession();};}catch(e){if(!playing)releaseAudioSession();toast(err(e),true);}};
+function drawExperiment(canvas,values,envelope=false){
+  const width=Math.max(180,canvas.clientWidth||300),height=112,scale=window.devicePixelRatio||1;canvas.width=Math.round(width*scale);canvas.height=Math.round(height*scale);
+  const g=canvas.getContext('2d');g.setTransform(scale,0,0,scale,0,0);g.clearRect(0,0,width,height);
+  g.strokeStyle=getComputedStyle(document.documentElement).getPropertyValue('--line').trim();g.lineWidth=1;g.beginPath();g.moveTo(0,height/2);g.lineTo(width,height/2);g.stroke();
+  g.strokeStyle=getComputedStyle(document.documentElement).getPropertyValue('--accent').trim();g.lineWidth=envelope?1:1.5;g.beginPath();
+  for(let x=0;x<width;x++){
+    const start=Math.min(values.length-1,Math.floor(x/width*values.length));
+    if(envelope){const end=Math.min(values.length,Math.max(start+1,Math.floor((x+1)/width*values.length)));let lo=values[start],hi=lo;for(let i=start+1;i<end;i++){lo=Math.min(lo,values[i]);hi=Math.max(hi,values[i]);}g.moveTo(x,height/2-hi*height*.42);g.lineTo(x,height/2-lo*height*.42);}
+    else{const y=height/2-values[start]*(height*.42);if(x===0)g.moveTo(x,y);else g.lineTo(x,y);}
+  }g.stroke();
+}
+function updateExperiment(){
+  const mode=$('#experiment-mode').value;$('#experiment-carrier-field').hidden=mode==='bfsk';
+  try{const result=lessonSignal($('#experiment-bits').value,mode,+$('#experiment-carrier').value),count=Math.min(result.samples.length,Math.round(result.sr*.02));
+    drawExperiment($('#experiment-wave'),result.samples.subarray(0,count),true);drawExperiment($('#experiment-spectrum'),relativeSpectrum(result.samples,result.sr).map(x=>2*x-1));
+    $('#experiment-status').textContent=`${mode.toUpperCase()} · 300 bit/s · first 20 ms shown`;
+  }catch(error){$('#experiment-status').textContent=err(error);for(const id of ['experiment-wave','experiment-spectrum']){const canvas=$('#'+id);canvas.getContext('2d').clearRect(0,0,canvas.width,canvas.height);}}
+}
+for(const id of ['experiment-bits','experiment-mode','experiment-carrier'])$('#'+id).addEventListener('input',updateExperiment);
 $('#byte-character').oninput=()=>{const s=$('#byte-character').value,bytes=utf.encode(s);$('#byte-output').textContent=bytes.length?Array.from(bytes,b=>`${b.toString(16).padStart(2,'0').toUpperCase()} → ${b.toString(2).padStart(8,'0')}`).join(' / '):'Type a character to see its UTF-8 bytes.';};
 
 function status(message,state='ready'){$('#rx-status').textContent=message;$('#rx-dot').classList.toggle('active',state==='active');$('#rx-dot').classList.toggle('error',state==='error');}
-function setBusy(value){busy=value;$('#rx-signal').disabled=value||listening;for(const id of ['loopback','demo','decoder-demo','audio-file'])$('#'+id).disabled=value||listening;$('#listen').disabled=value;$('.import-audio').classList.toggle('disabled',value||listening);}
+function setBusy(value){busy=value;$('#rx-signal').disabled=value||listening;updateSpeedControls();for(const id of ['loopback','demo','decoder-demo','audio-file'])$('#'+id).disabled=value||listening;$('#listen').disabled=value;$('.import-audio').classList.toggle('disabled',value||listening);}
 function receiverPlan(){const [modulation,carrier]=$('#rx-signal').value.split(':');return {modulation,carrier:+carrier||1800};}
-function updateReceiveSignalHelp(){$('#rx-signal-help').textContent=receiverPlan().carrier===20500?'Match the sender’s signal. High frequency needs at least 44.1 kHz audio and compatible devices.':'Match the sender’s signal and method. SAME and Morse still work.';}
-$('#rx-signal').onchange=updateReceiveSignalHelp;updateReceiveSignalHelp();
+function updateReceiveSignalHelp(){const speed=$('#rx-rate-auto').checked?'Speed is detected automatically.':'Manual speed is on; match the sender’s speed.';$('#rx-signal-help').textContent=`Match the sender’s signal and frequency. ${speed} ${receiverPlan().carrier===20500?'High frequency needs at least 44.1 kHz audio and compatible devices.':'SAME and Morse still work.'}`;}
+$('#rx-signal').onchange=()=>{updateReceiveSignalHelp();$('#shared-settings-note').hidden=true;};updateReceiveSignalHelp();
 function requireCarrierRate(carrier,sr){if(+carrier===20500&&sr<44100)throw Error('The 20.5 kHz carrier needs an audio sample rate of at least 44.1 kHz. Try a different audio device or the 1.8 kHz carrier.');}
-function makeWorker(sr,inputKind='recording',modulation=receiverPlan().modulation,carrier=receiverPlan().carrier){
+function makeWorker(sr,inputKind='recording',modulation=receiverPlan().modulation,carrier=receiverPlan().carrier,rate=$('#rx-rate-auto').checked?'auto':speedProfiles[+$('#rx-speed-preset').value]){
   if(modulation!=='bfsk')requireCarrierRate(carrier,sr);
-  worker?.terminate();worker=new Worker(new URL('./receive-worker.mjs?v=0.3.8',import.meta.url),{type:'module'});const current=++job;lastTransfer=null;activeReceptionKey=null;lastSyncAt=0;$('#decode-stage').textContent='Waiting for a signal';
+  worker?.terminate();worker=new Worker(new URL('./receive-worker.mjs?v=0.4.0',import.meta.url),{type:'module'});const current=++job;lastTransfer=null;activeReceptionKey=null;lastSyncAt=0;$('#decode-stage').textContent='Waiting for a signal';
   $('#copy-progress').hidden=true;$('#result').hidden=true;$('#result-source').hidden=true;$('#empty-result').hidden=false;
   worker.onmessage=({data})=>{
     if(data.job!==current)return;
@@ -285,7 +321,7 @@ function makeWorker(sr,inputKind='recording',modulation=receiverPlan().modulatio
     }
   };
   worker.onerror=e=>{streamAck?.(true);streamAck=null;setBusy(false);cleanupMicrophone();status('Decoder stopped. Reload the app and try again.','error');toast(e.message||'Audio worker failed.',true);};
-  worker.postMessage({type:'init',job:current,sr,sensitivity,modulation,carrier,morseWpm:+$('#morse-rx-wpm').value});return current;
+  worker.postMessage({type:'init',job:current,sr,sensitivity,modulation,carrier,rate,morseWpm:+$('#morse-rx-wpm').value});return current;
 }
 try{sensitivity=localStorage.getItem('signal-lab-sensitivity')||'normal';}catch{}
 if(!['low','normal','high'].includes(sensitivity))sensitivity='normal';
@@ -299,22 +335,43 @@ updateSensitivity();
 $('#open-morse-settings').onclick=()=>{$('.receiver-settings').open=true;$('#morse-rx-wpm').focus();};
 $('#morse-rx-wpm').onchange=()=>{updateReceiverSettings();worker?.postMessage({type:'morse-speed',job,wpm:+$('#morse-rx-wpm').value});};
 async function decodeSignal(samples,sr,label){
-  if(listening)throw Error('Stop the microphone before decoding a recording or running a demo.');setBusy(true);status(`Decoding ${label}…`,'active');const current=makeWorker(sr,'recording',label==='the demo waveform'?'bfsk':undefined);$('#result-source').textContent=label==='the demo waveform'?'Demo result · generated on this device':label==='generated audio'?'Test result · generated on this device':`Imported recording · ${label}`;$('#result-source').hidden=false;showPage('decoder');
+  if(listening)throw Error('Stop the microphone before decoding a recording or running a demo.');setBusy(true);status(`Decoding ${label}…`,'active');const current=makeWorker(sr,'recording',label==='the demo waveform'?'bfsk':undefined,undefined,label==='the demo waveform'?'balanced':undefined);$('#result-source').textContent=label==='the demo waveform'?'Demo result · generated on this device':label==='generated audio'?'Test result · generated on this device':`Imported recording · ${label}`;$('#result-source').hidden=false;showPage('decoder');
   const length=sr*2;for(let at=0;at<samples.length;at+=length){const part=samples.slice(at,at+length);worker.postMessage({type:'audio',job:current,samples:part,done:at+length>=samples.length},[part.buffer]);}
   previewSamples=samples;previewRate=sr;drawScope();
 }
 async function decodeCustom(plan){
-  if(listening)throw Error('Stop the microphone before testing a signal.');setBusy(true);const generator=createCustomStream(plan.data,plan.meta,plan.profile,plan.total,plan.id),current=makeWorker(generator.sr,'recording',plan.profile.modulation||'bfsk',plan.profile.carrier);$('#rx-signal').value=plan.profile.modulation?`${plan.profile.modulation}:${plan.profile.carrier}`:'bfsk';updateReceiveSignalHelp();$('#result-source').textContent='Test result · generated on this device';$('#result-source').hidden=false;showPage('decoder');
-  $('#cancel-test').hidden=false;let sent=0;while(!generator.done&&current===job){const chunk=generator.read(generator.sr*2);sent+=chunk.length;status(`Testing generated audio · ${Math.round(sent/generator.length*100)}%`,'active');await new Promise((resolve,reject)=>{streamAck=failed=>failed?reject(Error('Decoder stopped.')):resolve();worker.postMessage({type:'audio',job:current,samples:chunk,done:generator.done,ack:true},[chunk.buffer]);});}
+  if(listening)throw Error('Stop the microphone before testing a signal.');setBusy(true);const generator=createCustomStream(plan.data,plan.meta,plan.profile,plan.total,plan.id),current=makeWorker(generator.sr,'recording',plan.profile.modulation||'bfsk',plan.profile.carrier,speedProfiles.find(key=>PROFILES[key].baud===plan.profile.baud));$('#rx-speed-preset').value=String(speedProfiles.findIndex(key=>PROFILES[key].baud===plan.profile.baud));updateSpeedControls();$('#rx-signal').value=plan.profile.modulation?`${plan.profile.modulation}:${plan.profile.carrier}`:'bfsk';$('#shared-settings-note').hidden=true;updateReceiveSignalHelp();$('#result-source').textContent='Test result · generated on this device';$('#result-source').hidden=false;showPage('decoder');
+  $('#cancel-test').textContent='Cancel test';$('#cancel-test').hidden=false;let sent=0;while(!generator.done&&current===job){const chunk=generator.read(generator.sr*2);sent+=chunk.length;status(`Testing generated audio · ${Math.round(sent/generator.length*100)}%`,'active');await new Promise((resolve,reject)=>{streamAck=failed=>failed?reject(Error('Decoder stopped.')):resolve();worker.postMessage({type:'audio',job:current,samples:chunk,done:generator.done,ack:true},[chunk.buffer]);});}
 }
 $('#cancel-test').onclick=()=>{job++;worker?.terminate();worker=null;streamAck?.();streamAck=null;$('#cancel-test').hidden=true;setBusy(false);status('Test cancelled.');};
 $('#loopback').onclick=async()=>{try{if(mode==='custom')await decodeCustom(customPlan());else{if(mode==='morse')$('#morse-rx-wpm').value=$('#morse-wpm').value;const s=buildSignal();await decodeSignal(s.samples,s.sr,'generated audio');}}catch(e){setBusy(false);toast(err(e),true);}};
 async function demo(){try{const id=Array.from(crypto.getRandomValues(new Uint8Array(8)),b=>b.toString(16).padStart(2,'0')).join('');const signal=makeDemo(id);await decodeSignal(signal.samples,signal.sr,'the demo waveform');}catch(e){setBusy(false);toast(err(e),true);}}
 $('#demo').onclick=demo;$('#decoder-demo').onclick=demo;
+async function decodeWavFile(file,info){
+  if(!info.frames)throw Error('This WAV has no audio samples.');
+  const current=makeWorker(info.sr);$('#result-source').textContent=`Imported WAV · ${file.name}`;$('#result-source').hidden=false;showPage('decoder');
+  $('#cancel-test').textContent='Cancel import';$('#cancel-test').hidden=false;let sent=0;
+  try{
+    for await(const chunk of readWavChunks(file,info)){
+      if(current!==job)return;sent+=chunk.length;status(`Decoding WAV · ${Math.round(sent/info.frames*100)}%`,'active');
+      await new Promise((resolve,reject)=>{streamAck=failed=>failed?reject(Error('Decoder stopped.')):resolve();worker.postMessage({type:'audio',job:current,samples:chunk,done:sent===info.frames,ack:true},[chunk.buffer]);});
+    }
+  }catch(error){
+    // A failed read or post must not leave a worker or stale acknowledgement alive.
+    if(current===job){job++;worker?.terminate();worker=null;streamAck=null;}
+    throw error;
+  }
+}
 $('#audio-file').onchange=async e=>{
   const file=e.target.files[0];e.target.value='';if(!file)return;
-  try{if(file.size>50*1024*1024)throw Error('Choose a recording smaller than 50 MB.');if(listening)throw Error('Stop the microphone before importing a recording.');setBusy(true);status('Opening recording…','active');const c=await audioContext(),audio=await c.decodeAudioData(await file.arrayBuffer());if(audio.duration>300)throw Error('Choose a recording no longer than five minutes.');const samples=new Float32Array(audio.length);for(let ch=0;ch<audio.numberOfChannels;ch++){const channel=audio.getChannelData(ch);for(let i=0;i<audio.length;i++)samples[i]+=channel[i]/audio.numberOfChannels;}await decodeSignal(samples,audio.sampleRate,file.name);
-  }catch(e){setBusy(false);status('Could not decode that recording. Try an uncompressed WAV.','error');toast(err(e),true);}
+  try{
+    if(listening)throw Error('Stop the microphone before importing a recording.');setBusy(true);status('Opening recording…','active');
+    let info;try{info=await readWavInfo(file);}catch(error){if(!/not supported|only uncompressed/i.test(err(error))||file.size>50*1024*1024)throw error;}
+    if(info){await decodeWavFile(file,info);return;}
+    if(file.size>50*1024*1024)throw Error('For recordings over 50 MB, use an uncompressed PCM WAV.');
+    const c=await audioContext(),audio=await c.decodeAudioData(await file.arrayBuffer());if(audio.duration>300)throw Error('For recordings over five minutes, use an uncompressed PCM WAV.');
+    const samples=new Float32Array(audio.length);for(let ch=0;ch<audio.numberOfChannels;ch++){const channel=audio.getChannelData(ch);for(let i=0;i<audio.length;i++)samples[i]+=channel[i]/audio.numberOfChannels;}await decodeSignal(samples,audio.sampleRate,file.name);
+  }catch(e){setBusy(false);$('#cancel-test').hidden=true;status('Could not decode that recording.','error');toast(err(e),true);}
 };
 
 // Stop microphone tracks before releasing processing nodes, including failures
@@ -350,12 +407,12 @@ function stopListening(){
 function paintInputMetrics(samples,sampleRate){
   const now=performance.now();lastSampleAt=now;inputHistory.push(samples);capturedSamples+=samples.length;
   if(!captureReady&&capturedSamples>=sampleRate*.25){captureReady=true;$('#rx-badge').textContent='Live';if(!lastTransfer)status('Microphone ready. Transmit now; keep this tab in the foreground.','active');}$('#save-capture').disabled=false;
-  if(now-lastMeterAt<180)return;lastMeterAt=now;inputMetrics=measureInput(samples,sampleRate);
+  if(now-lastMeterAt<180)return;lastMeterAt=now;inputMetrics=measureInput(samples,sampleRate,{highFrequency:receiverPlan().carrier===20500});
   const m=inputMetrics,db=Math.max(-90,Math.min(0,m.db)),quiet=m.db<-80;
   $('#input-db').textContent=m.db<=-119?'−∞ dBFS':`${Math.round(m.db)} dBFS`;
   $('#input-meter').setAttribute('aria-valuenow',String(Math.round(db)));$('#input-meter').classList.toggle('clipping',m.clipping);$('#input-meter-bar').style.width=`${(db+90)/90*100}%`;
-  $('#input-state').textContent=m.clipping?'Input is clipping':quiet?'Very quiet input':m.custom>.18?'Custom modem tones detected':m.same>.18?'SAME tones detected':m.morse>.45?'Morse tone detected':'Microphone is hearing audio';
-  $('#input-detail').textContent=m.clipping?'Lower the Mac playback volume to reduce distortion.':quiet?'Little audio is reaching the microphone. Check playback volume and move the devices closer.':m.custom>.18?'Custom tone energy is arriving. If no header locks, try Resilient and a short message.':m.same>.18?'SAME tone energy is arriving. Waiting for complete header bursts.':m.morse>.45?'700 Hz tone energy is arriving. Match Morse receive speed to the sender.':'Input is active. Play a signal from the other device; ordinary speech and breath do not contain a modem packet.';
+  $('#input-state').textContent=m.clipping?'Input is clipping':quiet?'Very quiet input':m.high>.15?'High-frequency energy detected':m.custom>.18?'Custom modem tones detected':m.same>.18?'SAME tones detected':m.morse>.45?'Morse tone detected':'Microphone is hearing audio';
+  $('#input-detail').textContent=m.clipping?'Lower the Mac playback volume to reduce distortion.':quiet?'Little audio is reaching the microphone. Check playback volume and move the devices closer.':m.high>.15?'Energy near 20.5 kHz is reaching the microphone. Other sounds can also appear here; a valid packet still needs to be decoded.':m.custom>.18?'Custom tone energy is arriving. If no header locks, try Resilient and a short message.':m.same>.18?'SAME tone energy is arriving. Waiting for complete header bursts.':m.morse>.45?'700 Hz tone energy is arriving. Match Morse receive speed to the sender.':'Input is active. Play a signal from the other device; ordinary speech and breath do not contain a modem packet.';
 }
 function checkCaptureHealth(){
   if(!listening)return;const now=performance.now(),contextState=micCtx?.state||'closed',paused=contextState!=='running',stalled=now-(lastSampleAt||captureStarted)>3000,track=stream?.getAudioTracks()[0],muted=track?.muted||track?.readyState==='ended';
@@ -500,4 +557,4 @@ function drawScope(){
 }
 function animate(time){if(time-lastPaint>70&&(playing||listening)){drawScope();paintPlayback();lastPaint=time;}requestAnimationFrame(animate);}requestAnimationFrame(animate);new ResizeObserver(drawScope).observe(canvas);
 window.addEventListener('pagehide',()=>{stopPlayback();cleanupMicrophone();worker?.terminate();ctx?.close();});
-updatePreview();updateLocations();const [initial,topic]=location.hash.slice(1).split('/');if(initial==='learn')openLesson(topic);else showPage(initial);
+updatePreview();updateLocations();const shared=readReceiverLink(location.href);if(shared){$('#rx-signal').value=shared.modulation==='bfsk'?'bfsk':`${shared.modulation}:${shared.carrier}`;$('#rx-rate-auto').checked=true;$('#rx-speed-preset').value=String(speedProfiles.indexOf(shared.rate));updateSpeedControls();updateReceiveSignalHelp();$('#shared-settings-note').textContent=`Shared settings applied. Sender speed: ${pLabel(shared.rate)} · ${PROFILES[shared.rate].baud} bit/s. The receiver detects speed automatically; start the microphone when ready.`;$('#shared-settings-note').hidden=false;}const [initial,topic]=location.hash.slice(1).split('/');if(initial==='learn')openLesson(topic);else showPage(initial);

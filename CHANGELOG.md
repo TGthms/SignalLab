@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Add speed presets with automatic decoder detection, settings-only receiver links, high-frequency input diagnostics, interactive waveform and spectrum comparisons, and chunked uncompressed WAV import.
+
 - Make the 20.5 kHz signal easier to find, combine the decoder’s method and carrier choices, and replace research examples with linked manufacturer specifications.
 
 - Add experimental DBPSK and DQPSK custom-data modulation, matching receiver settings and a comparison in Learn. Phase modes also offer an experimental 20.5 kHz carrier and research-based device guidance.

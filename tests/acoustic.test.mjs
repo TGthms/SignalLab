@@ -25,3 +25,16 @@ assert(measureInput(Float32Array.of(1,-1,1,-1),48000).clipping);
 const history=new PcmHistory(4,2),first=Float32Array.of(0,1,2,3,4);history.push(first);first.fill(99);history.push(Float32Array.of(5,6,7,8,9));assert.deepEqual([...history.samples()],[2,3,4,5,6,7,8,9]);assert.equal(history.length,8);
 history.push(Float32Array.from({length:20},(_,i)=>i));assert.deepEqual([...history.samples()],[12,13,14,15,16,17,18,19]);
 console.log('PASS noise rejection, quiet-tone diagnostics, RMS meter, clipping and bounded local PCM history');
+
+const highTone=Float32Array.from({length:2048},(_,i)=>.01*Math.sin(2*Math.PI*20500*i/48000));
+assert(measureInput(highTone,48000,{highFrequency:true}).high>.8);
+assert(measureInput(tone,48000,{highFrequency:true}).high<.1);
+assert.equal(measureInput(highTone,32000,{highFrequency:true}).high,0);
+console.log('PASS optional high-frequency energy diagnostics');
+const {phaseProfile,customPreambleBytes}=await import('../dist/codec.mjs');
+for(const mode of ['dbpsk','dqpsk'])for(const name of ['resilient','balanced','fast']){
+  const profile=phaseProfile(PROFILES[name],mode,20500),wire=modulate(packet(payload,{kind:'text'},{preambleBytes:customPreambleBytes(profile)}),profile,48000);
+  const observed=measureInput(wire.subarray(48000*.4,48000*.4+2048),48000,{highFrequency:true});
+  assert(observed.high>.15,`${mode} ${name}: high-frequency signal band`);
+}
+console.log('PASS high-frequency diagnostics on modulated phase signals');

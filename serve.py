@@ -13,8 +13,13 @@ parser.add_argument('--no-browser', action='store_true')
 args = parser.parse_args()
 root = Path(__file__).resolve().parent / 'dist'
 handler = functools.partial(http.server.SimpleHTTPRequestHandler, directory=str(root))
+
+class SignalServer(http.server.ThreadingHTTPServer):
+    # A fresh browser may fetch many ES modules at once.
+    request_queue_size = 64
+
 try:
-    server = http.server.ThreadingHTTPServer(('127.0.0.1', args.port), handler)
+    server = SignalServer(('127.0.0.1', args.port), handler)
 except OSError as exc:
     parser.exit(1, f'Could not open port {args.port}: {exc}\nTry: python3 serve.py --port 5195\n')
 url = f'http://127.0.0.1:{server.server_port}/'

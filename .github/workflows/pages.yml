@@ -30,6 +30,8 @@ jobs:
           node tests/signal-plan.test.mjs
           node tests/custom-stream.test.mjs
           node tests/modulation.test.mjs
+          node tests/wav-reader.test.mjs
+          node tests/learning-share.test.mjs
           node tests/eas-study.test.mjs
           node --check dist/app.mjs
           node --check dist/receive-worker.mjs

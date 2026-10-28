@@ -44,3 +44,15 @@ const displayContext=vm.createContext({$:node,renderProgress(){},resultCard:t=>t
 vm.runInContext(display+"\nshowTransfer({state:'receiving'});",displayContext);
 assert.equal(node('#result').children[0],'Header received; no valid payload yet');
 console.log('PASS independent log updates, late-timeout isolation and no stale payload under a new header');
+// Automatic rate detection remains the default; an explicit rate narrows only
+// custom-data demodulators and must leave SAME reception available.
+for(const rate of ['auto','resilient','fast']){
+  events.length=0;send({type:'init',job:11,sr,sensitivity:'normal',rate});
+  const data=new TextEncoder().encode('rate test'),profile=PROFILES.resilient;
+  const audio=modulate(packet(data,{kind:'text'},{id:'1234567890abcdef',preambleBytes:customPreambleBytes(profile)}),profile,sr);
+  for(let at=0;at<audio.length;at+=2048)send({type:'audio',job:11,samples:audio.subarray(at,at+2048)});
+  assert.equal(events.some(e=>e.type==='transfer'&&e.transfer.state==='verified'),rate!=='fast',`rate ${rate}`);
+  const alert=modulate(sameBytes(header),PROFILES.same,sr);for(let at=0;at<alert.length;at+=2048)send({type:'audio',job:11,samples:alert.subarray(at,at+2048)});
+  assert(events.some(e=>e.type==='same-transfer'),`SAME remains available at ${rate}`);
+}
+console.log('PASS automatic and manual custom-data rate selection');

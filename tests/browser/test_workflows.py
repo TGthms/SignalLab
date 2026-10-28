@@ -2,6 +2,8 @@
 import contextlib
 import http.server
 import socketserver
+import subprocess
+import tempfile
 import threading
 import unittest
 from pathlib import Path
@@ -15,10 +17,15 @@ class QuietHandler(http.server.SimpleHTTPRequestHandler):
     def log_message(self, *args):
         pass
 
+class TestServer(socketserver.ThreadingTCPServer):
+    allow_reuse_address = True
+    daemon_threads = True
+    request_queue_size = 64
+
 class WorkflowTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.server = socketserver.TCPServer(('127.0.0.1', 0), QuietHandler)
+        cls.server = TestServer(('127.0.0.1', 0), QuietHandler)
         cls.thread = threading.Thread(target=cls.server.serve_forever, daemon=True)
         cls.thread.start()
         cls.url = f'http://127.0.0.1:{cls.server.server_address[1]}/'
@@ -35,6 +42,7 @@ class WorkflowTests(unittest.TestCase):
     def setUp(self):
         self.page = self.browser.new_page(viewport={'width': 390, 'height': 844})
         self.page.goto(self.url)
+        self.page.wait_for_function("location.hash === '#encoder'")
 
     def tearDown(self):
         self.page.close()
@@ -51,6 +59,16 @@ class WorkflowTests(unittest.TestCase):
         page.get_by_role('button', name='Encoder').click()
         self.assertEqual(page.get_by_role('textbox', name='Message').input_value(), 'Keep this draft')
         self.assertEqual(page.get_by_role('button', name='2×').get_attribute('aria-pressed'), 'true')
+
+    def test_demo_works_after_manual_receive_speed_selection(self):
+        page = self.page
+        page.locator('.nav[data-page=decoder]').click()
+        page.locator('.receiver-settings summary').click()
+        page.locator('#rx-rate-auto').uncheck()
+        page.locator('#rx-speed-preset').press('End')
+        page.locator('.nav[data-page=encoder]').click()
+        page.get_by_role('button', name='Run a demo').click()
+        page.locator('#result').get_by_text('3 of 3 copies verified', exact=True).wait_for(timeout=15000)
 
     def test_mobile_actions_and_result_remain_reachable(self):
         page = self.page
@@ -103,6 +121,54 @@ class WorkflowTests(unittest.TestCase):
         self.assertTrue(page.locator('#device-research').get_attribute('open') is not None)
         self.assertTrue(page.get_by_text('Other models and newer generations may work', exact=False).is_visible())
         self.assertTrue(page.get_by_role('link', name='Apple iPhone 16 Pro Max').is_visible())
+
+    def test_speed_presets_and_shared_receiver_settings(self):
+        page = self.page
+        slider = page.locator('#speed-preset')
+        slider.press('Home')
+        self.assertIn('Resilient', slider.get_attribute('aria-valuetext'))
+        page.locator('#signal-high').click()
+        page.locator('.share-settings summary').click()
+        link = page.locator('#share-link').input_value()
+        self.assertNotIn('Hello', link)
+        page.goto(link)
+        self.assertEqual(page.locator('#rx-signal').input_value(), 'dbpsk:20500')
+        self.assertTrue(page.locator('#rx-rate-auto').is_checked())
+        self.assertIn('detects speed automatically', page.locator('#shared-settings-note').inner_text())
+        self.assertEqual(page.locator('#listen-label').inner_text(), 'Start microphone')
+        page.locator('.receiver-settings summary').click()
+        self.assertTrue(page.locator('#rx-speed-preset').is_disabled())
+        page.locator('#rx-rate-auto').uncheck()
+        self.assertTrue(page.locator('#rx-speed-preset').is_enabled())
+        self.assertIn('Manual speed is on', page.locator('#rx-signal-help').inner_text())
+        self.assertFalse(page.locator('#shared-settings-note').is_visible())
+
+    def test_interactive_comparison_updates(self):
+        page = self.page
+        page.get_by_role('button', name='Learn', exact=True).click()
+        page.locator('#experiment-mode').select_option('dqpsk')
+        page.locator('#experiment-carrier').select_option('20500')
+        self.assertIn('DQPSK', page.locator('#experiment-status').inner_text())
+        self.assertTrue(page.locator('#experiment-spectrum').is_visible())
+        page.locator('#experiment-bits').fill('010')
+        self.assertIn('eight', page.locator('#experiment-status').inner_text())
+
+    def test_long_pcm_wav_import(self):
+        page = self.page
+        script = """import {open} from 'node:fs/promises';
+import {createCustomStream,wavHeader,pcm16} from './dist/custom-stream.mjs';
+import {PROFILES} from './dist/codec.mjs';
+const s=createCustomStream(new Uint8Array(3800).fill(65),{kind:'text'},PROFILES.resilient,1,'1234567890abcdef',12000);
+const f=await open(process.argv[1],'w');await f.write(wavHeader(s.length,s.sr));
+while(!s.done)await f.write(pcm16(s.read(24000)));await f.close();"""
+        with tempfile.TemporaryDirectory() as directory:
+            path = str(Path(directory) / 'long.wav')
+            subprocess.run(['node', '--input-type=module', '-e', script, path], cwd=str(ROOT.parent), check=True)
+            page.locator('.nav[data-page=decoder]').click()
+            page.locator('#audio-file').set_input_files(path)
+            page.locator('#result').get_by_text('1 of 1 copies verified', exact=True).wait_for(timeout=60000)
+            self.assertIn('3.7 KiB', page.locator('#result').inner_text())
+            self.assertTrue(page.locator('#result-source').inner_text().startswith('Imported WAV'))
 
     def test_large_transfer_has_no_five_minute_cap(self):
         page = self.page

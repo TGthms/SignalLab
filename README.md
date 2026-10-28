@@ -14,14 +14,15 @@ For a one-device experiment, use **Run a demo** or the encoder's **Test in decod
 
 - **Light, dark, and system themes** with a saved preference.
 - **Custom data modulation:** BFSK, DBPSK, or DQPSK. Match the method on the receiver; BFSK remains the default and is compatible with older versions. Phase modes are experimental and offer 1.8 kHz or a 20.5 kHz carrier. The high carrier needs a sample rate of at least 44.1 kHz; real speaker and microphone support varies and the signal is not guaranteed inaudible. A successful Safari transmission from a 2022 MacBook Air M2 to an iPhone 16 Pro Max has been user-reported; manufacturer specifications alone do not establish compatibility with other devices.
-- **Three modem profiles:** Resilient (100 bit/s), Balanced (300 bit/s), Fast (600 bit/s).
+- **Settings links:** share the selected signal settings without message contents; the receiver chooses when to start its microphone.
+- **Three modem profiles:** Resilient (100 bit/s), Balanced (300 bit/s), Fast (600 bit/s). The decoder detects these rates automatically by default; a manual rate is optional.
 - **Declared repetition:** 1×, 2×, or 3×. The checksummed opening header declares a transfer ID, total copies, and copy index before the payload arrives. Each full copy must pass CRC-32. The receiver compares metadata and original payload bytes, counting only distinct indices. Missing copies remain incomplete; differing copies produce a conflict.
-- **WAV export for custom data and Morse, recording import**, plus original-byte payload downloads. Files are limited to 8 KiB; recordings imported into the decoder are limited to five minutes / 50 MB.
+- **WAV export for custom data and Morse, recording import**, plus original-byte payload downloads. Files are limited to 8 KiB; uncompressed PCM WAV recordings are processed in chunks, while other formats are limited to five minutes / 50 MB.
 - **Morse:** text at 5–35 WPM and a 700 Hz keyed tone, dots/dashes preview, WAV export and streaming microphone/file decoding at a matching receive speed. Learn includes complete supported-character tables with tap-to-hear examples, timing explanations and ITU/ARRL resources. Morse has no checksum or copy plan; results are labelled decoded, never CRC-verified.
 - **SAME studies:** editable header fields, a silent internal decoder test using the generated waveform, and optional playback of actual SAME modulation, attention signal, attached announcement audio, or browser speech. EAS/SAME WAV export is unavailable.
 - **Local educational lookup:** a bundled NOAA SAME directory names geographic areas and explains PSSCCC, FIPS state/county identifiers, and locally defined county partitions.
-- **Learn:** interactive bit tones, a UTF-8 byte inspector, annotated SAME headers, verification explanations, and reception tips.
-- **Input diagnostics:** real dBFS level, tone-energy detection, auto-scaled waveform, paused-capture recovery, and a local WAV export of the last 30 seconds. The capture history is bounded and is never uploaded.
+- **Learn:** interactive bit tones, waveform and spectrum comparison, a UTF-8 byte inspector, annotated SAME headers, verification explanations, and reception tips.
+- **Input diagnostics:** high-frequency band-energy indication, real dBFS level, tone-energy detection, auto-scaled waveform, paused-capture recovery, and a local WAV export of the last 30 seconds. The capture history is bounded and is never uploaded.
 - **Receive log:** in-memory results from the current tab.
 
 ## Run locally
@@ -66,7 +67,7 @@ Custom data uses Signal Lab protocol v2; v1 packets can still be decoded, with a
 
 SAME is a study implementation, not certified emergency alert equipment. In the U.S., [47 CFR § 11.45](https://www.ecfr.gov/current/title-47/section-11.45) restricts transmitting EAS codes and attention signals, including recordings or simulations, except for specified authorized uses. A disclaimer or test label is not authorization. Do not broadcast, stream, publish, or feed these signals into alert systems unless your use is authorized. Local playback, recording and sharing may also raise legal or safety questions. Rules may differ outside the U.S.; consult qualified counsel for your use. The [FCC has enforced this rule](https://docs.fcc.gov/public/attachments/DA-24-1285A1_Rcd.pdf). It compares distinct complete parsed headers and counts repeated end markers. It does not reconstruct partially corrupt SAME headers by bitwise majority or transcribe speech. SAME's fixed three-burst format is preserved; custom repetition fields are never inserted into SAME audio.
 
-In EAS/SAME mode, browser speech and attached recordings (up to 90 seconds) are for live playback; EAS/SAME WAV export is unavailable. The internal decoder test processes the generated signal silently, without speaker playback. Custom-data playback and internal tests generate audio in bounded chunks, with no five-minute transmission cap. WAV export streams to disk where the browser supports the File System Access API; other browsers assemble the WAV in memory and may struggle with large exports. Imported recordings still have a five-minute / 50 MB limit. Large payloads can take tens of minutes. Imported recordings and microphone audio stay on the device. Received data is displayed as text or offered for download; it is not automatically executed. Receptions are cleared on reload.
+In EAS/SAME mode, browser speech and attached recordings (up to 90 seconds) are for live playback; EAS/SAME WAV export is unavailable. The internal decoder test processes the generated signal silently, without speaker playback. Custom-data playback and internal tests generate audio in bounded chunks, with no five-minute transmission cap. WAV export streams to disk where the browser supports the File System Access API; other browsers assemble the WAV in memory and may struggle with large exports. Uncompressed PCM WAV recordings are imported in bounded chunks, including recordings over five minutes or 50 MB. Other formats and unsupported WAV encodings still have a five-minute / 50 MB limit. Large payloads can take tens of minutes. Imported recordings and microphone audio stay on the device. Received data is displayed as text or offered for download; it is not automatically executed. Receptions are cleared on reload.
 
 The NOAA location directory is a dated snapshot and includes legacy entries. Names are presented as NOAA lists them, with state names expanded; current coverage and partition definitions should be checked against NOAA's live tables. A six-digit format alone does not establish that a code is currently assigned.
 
@@ -79,6 +80,8 @@ The NOAA location directory is a dated snapshot and includes legacy entries. Nam
 - `dist/style.css`, `dist/design.css`: component styles and the visual design layer.
 - `dist/codec.mjs`: modulation, streaming demodulation, CRC, and framing.
 - `dist/transfers.mjs`: custom repetition verification and SAME burst grouping.
+- `dist/wav-reader.mjs`: bounded uncompressed WAV import.
+- `dist/lesson-signal.mjs`, `dist/share-settings.mjs`: interactive signal illustrations and settings-only links.
 - `dist/receive-worker.mjs`: decoding outside the main thread.
 - `dist/capture.mjs`: bundled worklet and compatibility capture.
 - `dist/locations.mjs`, `dist/data/`: local NOAA place lookup.

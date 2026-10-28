@@ -12,15 +12,17 @@ assert.equal($('#input-state').textContent,'Microphone stopped');assert.equal($(
 let latestStatus;const posted=[];
 class WorkerStub{postMessage(value){posted.push(value);}terminate(){}}
 const workerCode=app.slice(app.indexOf('function receiverPlan('),app.indexOf("try{sensitivity=localStorage")) .replace('import.meta.url',JSON.stringify(new URL('../dist/app.mjs',import.meta.url).href));
-const workerContext=vm.createContext({$,Worker:WorkerStub,URL,worker:null,job:0,activeReceptionKey:null,lastTransfer:null,lastSyncAt:0,sensitivity:'normal',listening:false,performance,setBusy(){},status(message,state){latestStatus={message,state};},resetInputMonitor(){vm.runInContext('resetInputMonitor()',resetContext);},transferStatus:()=>'',cleanupMicrophone(){},toast(){}});
+$('#rx-rate-auto').checked=true;
+const workerContext=vm.createContext({$,speedProfiles:['resilient','balanced','fast'],Worker:WorkerStub,URL,worker:null,job:0,activeReceptionKey:null,lastTransfer:null,lastSyncAt:0,sensitivity:'normal',listening:false,performance,setBusy(){},status(message,state){latestStatus={message,state};},resetInputMonitor(){vm.runInContext('resetInputMonitor()',resetContext);},transferStatus:()=>'',cleanupMicrophone(){},toast(){}});
 vm.runInContext(workerCode+"\nmakeWorker(48000,'microphone');worker.onmessage({data:{job:1,type:'sync',profile:'Balanced'}});worker.onmessage({data:{job:1,type:'done'}});",workerContext);
 assert.throws(()=>vm.runInContext('requireCarrierRate(20500, 32000)',workerContext),/44.1 kHz/);vm.runInContext('requireCarrierRate(20500, 44100);requireCarrierRate(1800, 32000)',workerContext);
 assert.match(latestStatus.message,/Microphone stopped/);assert.notEqual(latestStatus.state,'error');assert.equal($('#decode-stage').textContent,'Stopped');
 vm.runInContext("makeWorker(48000);worker.onmessage({data:{job:2,type:'done'}});",workerContext);assert.match(latestStatus.message,/cleaner recording/);
 for(const value of ['bfsk','dbpsk:1800','dbpsk:20500','dqpsk:1800','dqpsk:20500']){
   $('#rx-signal').value=value;vm.runInContext('makeWorker(48000)',workerContext);
-  const [modulation,carrier]=value.split(':');assert.equal(posted.at(-1).modulation,modulation);assert.equal(posted.at(-1).carrier,+carrier||1800);
+  const [modulation,carrier]=value.split(':');assert.equal(posted.at(-1).modulation,modulation);assert.equal(posted.at(-1).carrier,+carrier||1800);assert.equal(posted.at(-1).rate,'auto');
 }
+$('#rx-rate-auto').checked=false;$('#rx-speed-preset').value='2';vm.runInContext('makeWorker(48000)',workerContext);assert.equal(posted.at(-1).rate,'fast');
 console.log('PASS stopped meter/guidance reset, delayed microphone completion and ignored post-Stop sync');
 const clock=app.slice(app.indexOf('function clockLabel('),app.indexOf('function stopPlayback('));
 let now=1000;
