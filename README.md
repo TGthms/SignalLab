@@ -13,6 +13,7 @@ Choose **Encoder** to compose text, emoji, JSON, or a small file and turn it int
 For a one-device experiment, use **Run a demo** or the encoder's **Test in decoder** button (↻). These feed the actual generated audio waveform into the receiver, without microphone permission.
 
 - **Light, dark, and system themes** with a saved preference.
+- **Custom data modulation:** BFSK, DBPSK, or DQPSK. Match the method on the receiver; BFSK remains the default and is compatible with older versions. Phase modes are experimental and offer 1.8 kHz or a 20.5 kHz carrier. The high carrier needs a sample rate of at least 44.1 kHz; real speaker and microphone support varies and the signal is not guaranteed inaudible. No devices have yet been verified with Signal Lab’s 20.5 kHz mode.
 - **Three modem profiles:** Resilient (100 bit/s), Balanced (300 bit/s), Fast (600 bit/s).
 - **Declared repetition:** 1×, 2×, or 3×. The checksummed opening header declares a transfer ID, total copies, and copy index before the payload arrives. Each full copy must pass CRC-32. The receiver compares metadata and original payload bytes, counting only distinct indices. Missing copies remain incomplete; differing copies produce a conflict.
 - **WAV export for custom data and Morse, recording import**, plus original-byte payload downloads. Files are limited to 8 KiB; recordings imported into the decoder are limited to five minutes / 50 MB.
@@ -55,7 +56,7 @@ node tests/capture.test.mjs
 node tests/acoustic.test.mjs
 ```
 
-Tests cover noisy unaligned transfers at 44.1/48 kHz; UTF-8 and binary round trips; checksum failure; 8 KiB transfers at ±0.1% clock drift; header-first repeat plans; independent copy counts; missing, corrupt, and conflicting copies; live timeout; SAME physical-burst counting; geographic lookup; actual worklet processor batching; capture fallback; and cleanup.
+Tests cover differential phase modulation, streaming, repeated copies and long transfers with clock drift, plus noisy unaligned transfers at 44.1/48 kHz; UTF-8 and binary round trips; checksum failure; 8 KiB transfers at ±0.1% clock drift; header-first repeat plans; independent copy counts; missing, corrupt, and conflicting copies; live timeout; SAME physical-burst counting; geographic lookup; actual worklet processor batching; capture fallback; and cleanup.
 
 GitHub Actions also runs browser workflow checks with Playwright, including mobile layout, demo preservation, accessibility state, and large-transfer behavior. GitHub Actions runs these checks before deploying `dist/` to GitHub Pages. Pushes to `main` publish the HTTPS app. No secrets or server services are required.
 

@@ -1,4 +1,4 @@
-import {packet, customPreambleBytes} from './codec.mjs?v=0.2.4';
+import {packet, customPreambleBytes} from './codec.mjs?v=0.3.8';
 
 // Generate the same signal as modulate/joinAudio without retaining PCM for the
 // whole transfer. State carries phase and bit boundaries across arbitrary chunks.
@@ -7,12 +7,21 @@ export function createCustomStream(data, meta, profile, total, id, sr=48000) {
   const spb=sr/profile.baud,padding=Math.round(sr*.18),gap=Math.round(sr*.65),ramp=Math.round(sr*.002),transition=Math.round(spb*(profile.smooth??.1));
   const partLengths=parts.map(bytes=>2*padding+Math.ceil(bytes.length*8*spb));
   const length=partLengths.reduce((a,b)=>a+b,0)+gap*(total-1);
-  let part=0,position=0,phase=0,previous=profile.zero,bit=0,begin=0,freq=profile.zero,inGap=false,gapPos=0,generated=0;
+  let part=0,position=0,phase=0,previous=profile.zero,bit=0,begin=0,freq=profile.zero,inGap=false,gapPos=0,generated=0,phaseSymbol=-1;
   function nextSample(){
     if(part>=parts.length)return 0;
-    if(inGap){if(++gapPos>=gap){inGap=false;gapPos=0;part++;position=0;phase=0;previous=profile.zero;bit=0;begin=0;}return 0;}
+    if(inGap){if(++gapPos>=gap){inGap=false;gapPos=0;part++;position=0;phase=0;previous=profile.zero;bit=0;begin=0;phaseSymbol=-1;}return 0;}
     const bytes=parts[part],bits=bytes.length*8,toneIndex=position-padding,toneEnd=Math.round(bits*spb);let sample=0;
     if(toneIndex>=0&&toneIndex<toneEnd){
+      if(profile.modulation && profile.modulation!=='bfsk'){
+        const width=profile.modulation==='dqpsk'?2:1,sps=spb*width;
+        let symbol=Math.floor(toneIndex/sps);
+        while(toneIndex>=Math.round((symbol+1)*sps))symbol++;
+        while(symbol>0 && toneIndex<Math.round(symbol*sps))symbol--;
+        if(symbol!==phaseSymbol){const at=symbol*width,value=(bytes[at>>3]>>(at&7))&((1<<width)-1);phase+=width===1?value*Math.PI:[0,Math.PI/2,3*Math.PI/2,Math.PI][value];phaseSymbol=symbol;}
+        const start=Math.round(symbol*sps),end=Math.round((symbol+1)*sps),x=(toneIndex-start)/(end-start);
+        sample=Math.fround(Math.sin(2*Math.PI*profile.carrier*toneIndex/sr+phase)*.65*Math.min(1,x/.1,(1-x)/.1));
+      }else{
       while(bit<bits && toneIndex>=Math.round((bit+1)*spb)){previous=freq;bit++;begin=Math.round(bit*spb);}
       freq=(bytes[bit>>3]>>(bit&7))&1?profile.one:profile.zero;
       const u=transition?Math.min(1,(toneIndex-begin)/transition):1;
@@ -20,6 +29,7 @@ export function createCustomStream(data, meta, profile, total, id, sr=48000) {
       sample=Math.fround(Math.sin(phase)*.65);phase=(phase+2*Math.PI*shaped/sr)%(2*Math.PI);
       if(toneIndex<ramp)sample=Math.fround(sample*(toneIndex/ramp));
       if(toneEnd-1-toneIndex<ramp)sample=Math.fround(sample*((toneEnd-1-toneIndex)/ramp));
+      }
     }
     position++;
     if(position===partLengths[part]){if(part<parts.length-1){inGap=true;gapPos=0;}else part++;}

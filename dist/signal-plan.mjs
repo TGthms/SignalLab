@@ -1,4 +1,4 @@
-import {packet, customPreambleBytes} from './codec.mjs?v=0.2.4';
+import {packet, customPreambleBytes} from './codec.mjs?v=0.3.8';
 
 // Estimate duration without allocating the audio waveform.
 export function customDuration(data, meta, profile, total) {

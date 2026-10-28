@@ -1,4 +1,4 @@
-import {PROFILES, customPreambleBytes, packet, modulate, joinAudio} from './codec.mjs?v=0.2.4';
+import {PROFILES, customPreambleBytes, packet, modulate, joinAudio} from './codec.mjs?v=0.3.8';
 
 // A self-contained example so a demonstration never mutates the user's draft.
 export function makeDemo(id, sr = 48000) {

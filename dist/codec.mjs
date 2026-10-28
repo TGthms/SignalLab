@@ -6,6 +6,11 @@ export const PROFILES = {
   same: { name: 'SAME', baud: 1 / .00192, zero: 1562.5, one: 4 / .00192 }
 };
 export const MAX_PAYLOAD = 8192;
+// Phase modes keep the same payload bit rate; DQPSK carries two bits per symbol.
+export function phaseProfile(profile, modulation='bfsk', carrier=1800) {
+  return modulation==='bfsk' ? profile : {...profile, modulation, carrier:carrier===20500?20500:1800};
+}
+
 // Microphone signals can be tens of dB below generated WAV levels. Keep the
 // acquisition/clock floor near numerical silence; CRC and grammar validate data.
 export const SENSITIVITY = {
@@ -47,6 +52,21 @@ export function packet(payload, meta, transmission = {}) {
   return bytes;
 }
 export function modulate(bytes, profile=PROFILES.balanced, sampleRate=48000, amplitude=.65) {
+  if(profile.modulation && profile.modulation!=='bfsk') {
+    const bits=profile.modulation==='dqpsk'?2:1, sps=sampleRate*bits/profile.baud, padding=Math.round(sampleRate*.18);
+    const out=new Float32Array(padding*2+Math.ceil(bytes.length*8/bits*sps));
+    let phase=0, idx=padding;
+    for(let symbol=0;symbol<bytes.length*8/bits;symbol++){
+      const bit=symbol*bits, value=(bytes[bit>>3]>>(bit&7))&((1<<bits)-1);
+      phase += bits===1 ? value*Math.PI : [0,Math.PI/2,3*Math.PI/2,Math.PI][value];
+      const begin=idx,end=padding+Math.round((symbol+1)*sps);
+      for(;idx<end;idx++){
+        const x=(idx-begin)/(end-begin), envelope=Math.min(1,x/.1,(1-x)/.1);
+        out[idx]=Math.sin(2*Math.PI*profile.carrier*(idx-padding)/sampleRate+phase)*amplitude*envelope;
+      }
+    }
+    return out;
+  }
   const spb=sampleRate/profile.baud, padding=Math.round(sampleRate*.18);
   const out=new Float32Array(padding*2+Math.ceil(bytes.length*8*spb));
   let phase=0, idx=padding,previous=profile.zero;
@@ -171,7 +191,7 @@ class Demodulator {
         if(t.bytes[0]===2 && t.bytes.length===21) {
           const a=Uint8Array.from(t.bytes),v=new DataView(a.buffer);
           if(![1,2,3].includes(a[7])||a[8]>=a[7]||crc32(a.subarray(0,17))!==v.getUint32(17)){this.reset(t);return;}
-          t.validHeader={protocol:'custom',version:2,profile:this.profile.name,total:a[7],index:a[8],id:Array.from(a.subarray(9,17),b=>b.toString(16).padStart(2,'0')).join(''),payloadLength:v.getUint32(3),metadataLength:v.getUint16(1),samplePosition:Math.round(this.tick*this.hop)};this.onHeader?.(t.validHeader);
+          t.validHeader={protocol:'custom',version:2,profile:this.profile.name,modulation:this.profile.modulation||'bfsk',total:a[7],index:a[8],id:Array.from(a.subarray(9,17),b=>b.toString(16).padStart(2,'0')).join(''),payloadLength:v.getUint32(3),metadataLength:v.getUint16(1),samplePosition:Math.round(this.tick*this.hop)};this.onHeader?.(t.validHeader);
         }
         if(t.expected&&t.bytes.length===t.expected) {
           const a=Uint8Array.from(t.bytes),v=new DataView(a.buffer),end=a.length-4;
@@ -180,7 +200,7 @@ class Demodulator {
               const ml=v.getUint16(1),start=a[0]===2?21:7,meta=JSON.parse(dec.decode(a.subarray(start,start+ml)));
               if(!meta||typeof meta!=='object'||Array.isArray(meta))throw Error();
               const transmission=a[0]===2?{id:Array.from(a.subarray(9,17),b=>b.toString(16).padStart(2,'0')).join(''),total:a[7],index:a[8]}:null;
-              this.onFrame({protocol:'custom',version:a[0],profile:this.profile.name,meta,payload:a.slice(start+ml,end),crc:crc32(a.subarray(0,end)),transmission,samplePosition:Math.round(this.tick*this.hop)});
+              this.onFrame({protocol:'custom',version:a[0],profile:this.profile.name,modulation:this.profile.modulation||'bfsk',carrier:this.profile.carrier||null,meta,payload:a.slice(start+ml,end),crc:crc32(a.subarray(0,end)),transmission,samplePosition:Math.round(this.tick*this.hop)});
             }catch{}
           }else if(t.validHeader)this.onReject?.(t.validHeader);
           this.reset(t);
@@ -199,9 +219,64 @@ class Demodulator {
     if(exact||tolerant) {t.bytes=[];t.bit=0;t.byte=0;t.expected=0;t.rng=0x1a2b3c4d;this.onProgress?.(this.profile.name);}
   }
 }
+// Differential detection compares successive carrier phases. Eight independent
+// timing candidates share the same CRC-protected frame parser as BFSK.
+class PhaseDemodulator extends Demodulator {
+  constructor(sr,profile,onFrame,onProgress,onHeader,options={}){
+    super(sr,profile,onFrame,onProgress,onHeader,options);
+    this.bitsPerSymbol=profile.modulation==='dqpsk'?2:1;
+    this.sps=sr*this.bitsPerSymbol/profile.baud;this.hop=this.sps/8;
+    this.n=Math.round(this.sps*.7);
+    this.kernel={c:Float32Array.from({length:this.n},(_,i)=>Math.cos(2*Math.PI*profile.carrier*i/sr)),s:Float32Array.from({length:this.n},(_,i)=>Math.sin(2*Math.PI*profile.carrier*i/sr))};
+  }
+  reset(t){super.reset(t);t.frequencyOffset=undefined;t.trainingPhases=[];}
+  feed(chunk){
+    const all=new Float32Array(this.buffer.length+chunk.length);all.set(this.buffer);all.set(chunk,this.buffer.length);this.buffer=all;
+    while(true){
+      const at=Math.round(this.tick*this.hop)-this.base;if(at+this.n>all.length)break;
+      let re=0,im=0;for(let j=0;j<this.n;j++){re+=all[at+j]*this.kernel.c[j];im+=all[at+j]*this.kernel.s[j];}
+      const absolute=this.base+at, angle=2*Math.PI*this.profile.carrier*absolute/this.sr;
+      // Transform the local correlation to a common oscillator reference.
+      const c=Math.cos(angle),s=Math.sin(angle),real=re*c-im*s,imag=re*s+im*c,power=(re*re+im*im)/(this.n*this.n);
+      for(const t of this.track){
+        if(t.adjustAt===this.tick && t.bytes){
+          const error=(power-t.earlyPower)/(power+t.earlyPower+1e-20);
+          t.next+=Math.max(-.15,Math.min(.15,error*.5));
+        }
+        if(this.tick<t.next)continue;
+        t.earlyPower=this.lastPower||0;t.adjustAt=this.tick+1;
+        t.next+=8;
+        if(power>this.sensitivity.floor && t.phasePower>this.sensitivity.floor){
+          let delta=Math.atan2(imag*t.phaseReal-real*t.phaseImag,real*t.phaseReal+imag*t.phaseImag);
+          if(this.profile.carrier>10000){
+            // Estimate frequency offset from the known alternating training
+            // preamble, then hold it through the frame.
+            if(t.frequencyOffset===undefined){
+              const multiple=this.bitsPerSymbol===1?2:1;
+              const training=multiple*delta+(this.bitsPerSymbol===2?Math.PI/2:0);
+              (t.trainingPhases??=[]).push([Math.cos(training),Math.sin(training)]);
+              if(t.trainingPhases.length>24)t.trainingPhases.shift();
+              if(t.trainingPhases.length===24){
+                const x=t.trainingPhases.reduce((sum,v)=>sum+v[0],0),y=t.trainingPhases.reduce((sum,v)=>sum+v[1],0);
+                if(Math.hypot(x,y)>20)t.frequencyOffset=Math.atan2(y,x)/multiple;
+              }
+            }
+            delta=Math.atan2(Math.sin(delta-(t.frequencyOffset||0)),Math.cos(delta-(t.frequencyOffset||0)));
+          }
+          if(this.bitsPerSymbol===1)this.accept(t,Math.abs(delta)>Math.PI/2?1:0,power);
+          else {const quadrant=((Math.round(-delta/(Math.PI/2))%4)+4)%4, value=[0,1,3,2][quadrant];this.accept(t,value&1,power);this.accept(t,value>>1,power);}
+        }
+        if(power<=this.sensitivity.floor){t.frequencyOffset=undefined;t.trainingPhases=[];}
+        t.phaseReal=real;t.phaseImag=imag;t.phasePower=power;
+      }
+      this.lastPower=power;this.tick++;
+    }
+    const cut=Math.max(0,Math.round(this.tick*this.hop)-this.base);this.buffer=all.slice(cut);this.base+=cut;
+  }
+}
 export class Receiver {
   constructor(sr,onFrame,onProgress,profiles=Object.values(PROFILES),onHeader,options={}) {
-    this.demods=profiles.map(p=>new Demodulator(sr,p,onFrame,onProgress,onHeader,options));
+    this.demods=profiles.map(p=>new (p.modulation && p.modulation!=='bfsk'?PhaseDemodulator:Demodulator)(sr,p,onFrame,onProgress,onHeader,options));
   }
   setSensitivity(value){for(const d of this.demods)d.setSensitivity(value);}
   feed(samples){for(const d of this.demods)d.feed(samples);}

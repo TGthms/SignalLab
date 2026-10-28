@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Add experimental DBPSK and DQPSK custom-data modulation, matching receiver settings and a comparison in Learn. Phase modes also offer an experimental 20.5 kHz carrier and research-based device guidance.
+
 - Confirm before enabling the optional EAS attention signal and identify it in the playback warning.
 
 - Ask for confirmation before EAS tone playback, with a silent-test alternative and contextual safety guidance.

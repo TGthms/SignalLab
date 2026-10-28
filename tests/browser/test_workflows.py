@@ -74,6 +74,36 @@ class WorkflowTests(unittest.TestCase):
         self.assertEqual(page.get_by_role('button', name='Morse code', exact=True).get_attribute('aria-pressed'), 'true')
         self.assertEqual(page.get_by_role('button', name='Sound & bits', exact=True).get_attribute('aria-pressed'), 'false')
 
+    def test_phase_modes_round_trip_and_receiver_matches(self):
+        page = self.page
+        for mode in ('dbpsk', 'dqpsk'):
+            if page.locator('.transmission-settings').get_attribute('open') is None:
+                page.locator('.transmission-settings summary').click()
+            page.locator('#modulation').select_option(mode)
+            page.get_by_role('button', name='Test in decoder').click()
+            page.locator('#result').get_by_text('Hello from the other side of the room. 🌊').wait_for(timeout=15000)
+            self.assertIn(mode.upper(), page.locator('#result').inner_text())
+            self.assertIn(mode.upper(), page.locator('#open-modulation-settings').inner_text())
+            page.get_by_role('button', name='Encoder').click()
+        page.get_by_role('button', name='Learn', exact=True).click()
+        self.assertTrue(page.get_by_role('table', name='Custom data modulation at a glance').is_visible())
+        self.assertEqual(page.evaluate('document.documentElement.scrollWidth <= innerWidth'), True)
+
+    def test_high_frequency_phase_round_trip_and_device_research(self):
+        page = self.page
+        page.locator('.transmission-settings summary').click()
+        page.locator('#modulation').select_option('dbpsk')
+        page.locator('#carrier').select_option('20500')
+        page.get_by_role('button', name='Test in decoder').click()
+        page.locator('#result').get_by_text('Hello from the other side of the room. 🌊').wait_for(timeout=15000)
+        self.assertIn('20.5 kHz', page.locator('#result').inner_text())
+        self.assertIn('20.5 kHz', page.locator('#open-modulation-settings').inner_text())
+        page.get_by_role('button', name='Encoder').click()
+        page.locator('#open-device-research').click()
+        self.assertTrue(page.locator('#device-research').get_attribute('open') is not None)
+        self.assertTrue(page.get_by_text('No model has yet been verified', exact=False).is_visible())
+        self.assertTrue(page.get_by_text('Apple iPhone 12', exact=True).is_visible())
+
     def test_large_transfer_has_no_five_minute_cap(self):
         page = self.page
         page.get_by_role('textbox', name='Message').fill('x' * 8192)

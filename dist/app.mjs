@@ -1,8 +1,8 @@
-import {makeDemo} from './demo.mjs?v=0.3.0';
-import {customDuration} from './signal-plan.mjs?v=0.3.2';
-import {createCustomStream,writeWavChunks} from './custom-stream.mjs?v=0.3.2';
+import {makeDemo} from './demo.mjs?v=0.3.8';
+import {customDuration} from './signal-plan.mjs?v=0.3.8';
+import {createCustomStream,writeWavChunks} from './custom-stream.mjs?v=0.3.8';
 import {MORSE,MORSE_FREQUENCY,morsePlan,morseSignal} from './morse.mjs?v=0.2.4';
-import {PROFILES,MAX_PAYLOAD,customPreambleBytes,packet,modulate,joinAudio,sameBytes,sameHeader,wav} from './codec.mjs?v=0.2.4';
+import {PROFILES,phaseProfile,MAX_PAYLOAD,customPreambleBytes,packet,modulate,joinAudio,sameBytes,sameHeader,wav} from './codec.mjs?v=0.3.8';
 import {attachCapture,resumeAudioContext,configureAudioSession,releaseMicrophone,ListeningWakeLock} from './capture.mjs?v=0.2.4';
 import {measureInput,PcmHistory} from './reception.mjs?v=0.2.4';
 import {describeLocation,searchLocations,STATES} from './locations.mjs?v=0.2.4';
@@ -49,12 +49,13 @@ function openLesson(next){lesson=['modem','verification','same','morse','recepti
 $$('[data-page]').forEach(n=>n.onclick=()=>showPage(n.dataset.page));
 $('.brand').onclick=e=>{e.preventDefault();showPage('encoder');window.scrollTo(0,0);};
 $$('[data-lesson]').forEach(n=>n.onclick=()=>openLesson(n.dataset.lesson));
+$('#open-device-research').onclick=()=>{openLesson('modem');const details=$('#device-research');details.open=true;details.scrollIntoView({block:'start'});};
 window.addEventListener('hashchange',()=>{const [next,topic]=location.hash.slice(1).split('/');if(next==='learn')openLesson(topic||lesson);else showPage(next);});
 function updateLayout(){$('.app-layout').classList.toggle('reading',(page==='learn'||page==='history')&&!listening&&!playing);}
 function updateInspector(){
   const sameMode=mode==='same'&&page==='encoder',morseMode=mode==='morse'&&page==='encoder';$('#rail-location').hidden=!sameMode;
   $('#inspector-title').textContent=page==='decoder'?'Read what arrived':morseMode?'Rhythm carries the letter':sameMode?'Read the location code':page==='learn'?'Try it, then inspect it':'Inside the signal';
-  $('#inspector-copy').textContent=page==='decoder'?'Custom data checks every declared copy. SAME compares header bursts. Morse reads tone timing without a checksum; match the receive speed to the sender.':morseMode?'Morse keys one tone on and off. A dash lasts three dots; gaps separate elements, letters, and words. Open the table to see and hear each character.':sameMode?'PSSCCC is the Geographical Area block. The leading digit chooses a partition; the other five identify a state and county or equivalent area.':page==='learn'?'Use the encoder’s loopback control to test an actual audio waveform. Then watch the decoder count and compare its copies.':'Two tones represent the bits in your message. The receiver finds the timing, reads the header, and checks the data.';
+  $('#inspector-copy').textContent=page==='decoder'?'Custom data checks every declared copy. SAME compares header bursts. Morse reads tone timing without a checksum; match the receive speed to the sender.':morseMode?'Morse keys one tone on and off. A dash lasts three dots; gaps separate elements, letters, and words. Open the table to see and hear each character.':sameMode?'PSSCCC is the Geographical Area block. The leading digit chooses a partition; the other five identify a state and county or equivalent area.':page==='learn'?'Use the encoder’s loopback control to test an actual audio waveform. Then watch the decoder count and compare its copies.':$('#modulation').value==='bfsk'?'Two tones represent the bits in your message. The receiver finds the timing, reads the header, and checks the data.':'Changes in carrier phase represent the bits. The receiver compares symbols, reads the header, and checks the data.';
   $('#inspector-learn').dataset.lesson=morseMode?'morse':page==='decoder'?'verification':sameMode?'same':'modem';
   $('.keyboard-hint').hidden=page!=='encoder';
 }
@@ -101,7 +102,7 @@ function updateUTC(){if($('#auto-time').checked)$('#issued').value=new Date().to
 function currentHeader(){return sameHeader({origin:$('#origin').value,event:$('#event').value,locations:$('#locations').value,duration:$('#duration').value,sender:$('#sender').value,date:$('#auto-time').checked?new Date():new Date($('#issued').value+'Z')});}
 updateUTC();
 function attentionSignal(sr){const a=new Float32Array(sr*8);for(let i=0;i<a.length;i++){const ramp=Math.min(1,i/(sr*.01),(a.length-1-i)/(sr*.01));a[i]=.32*(Math.sin(2*Math.PI*853*i/sr)+Math.sin(2*Math.PI*960*i/sr))*ramp;}return a;}
-function customPlan(){const {data,meta}=payload();const id=Array.from(crypto.getRandomValues(new Uint8Array(8)),b=>b.toString(16).padStart(2,'0')).join('');return {data,meta,id,total:+$('#repeat').value,profile:PROFILES[$('#profile').value]};}
+function customPlan(){const {data,meta}=payload();const id=Array.from(crypto.getRandomValues(new Uint8Array(8)),b=>b.toString(16).padStart(2,'0')).join('');return {data,meta,id,total:+$('#repeat').value,profile:phaseProfile(PROFILES[$('#profile').value],$('#modulation').value,+$('#carrier').value)};}
 function buildSignal(){
   const sr=48000;
   if(mode==='morse')return morseSignal($('#morse-message').value,+$('#morse-wpm').value,sr);
@@ -118,15 +119,15 @@ function updatePreview(){
   const size=kind==='file'?(payloadFile?.data.length||0):utf.encode($('#message').value).length;
   $('#byte-count').textContent=size.toLocaleString();$('#byte-count').style.color=size>MAX_PAYLOAD?'var(--accent)':'';
   $('#profile-help').textContent={balanced:'Start here for short transfers between nearby devices.',resilient:'Longer symbols for a noisy channel. Three times the transfer time.',fast:'For clean recordings and controlled conditions. Shorter, less forgiving symbols.'}[$('#profile').value];
-  const total=+$('#repeat').value;$('.transmission-settings summary span').textContent=`${pLabel($('#profile').value)} · ${total} ${total===1?'copy':'copies'}`;$('#repeat-help').textContent=total===1?'The receiver expects one copy and checks its CRC-32 checksum.':`The header announces ${total} copies. Each must pass CRC-32 and match before the transfer is fully verified.`;
-  const p=mode==='same'?PROFILES.same:PROFILES[$('#profile').value];
-  if(!listening){$('#scope-frequency').textContent=mode==='morse'?'700 Hz':mode==='same'?'1.56 / 2.08 kHz':'1.2 / 2.4 kHz';$('#scope-protocol').textContent=mode==='morse'?'MORSE / OOK':mode==='same'?'SAME / AFSK':'BFSK / v2';$('#scope-rate').textContent=mode==='morse'?`${$('#morse-wpm').value} WPM`:`${p.baud.toFixed(mode==='same'?2:0)} bit/s`;}
+  const total=+$('#repeat').value,modulation=$('#modulation').value,carrier=+$('#carrier').value;$('#carrier-field').hidden=modulation==='bfsk';$('#modulation-help').firstChild.textContent={bfsk:'BFSK uses two pitches. Match this setting in the receiver. ',dbpsk:'DBPSK uses changes in carrier phase. Match this setting in the receiver. ',dqpsk:'DQPSK sends two bits per phase change. Match this setting in the receiver. '}[modulation];$('.transmission-settings summary span').textContent=`${modulation.toUpperCase()} · ${pLabel($('#profile').value)} · ${total} ${total===1?'copy':'copies'}`;$('#repeat-help').textContent=total===1?'The receiver expects one copy and checks its CRC-32 checksum.':`The header announces ${total} copies. Each must pass CRC-32 and match before the transfer is fully verified.`;
+  const p=mode==='same'?PROFILES.same:phaseProfile(PROFILES[$('#profile').value],modulation,carrier);
+  if(!listening){$('#scope-frequency').textContent=mode==='morse'?'700 Hz':mode==='same'?'1.56 / 2.08 kHz':modulation==='bfsk'?'1.2 / 2.4 kHz':`${(carrier/1000).toFixed(1)} kHz`;$('#scope-protocol').textContent=mode==='morse'?'MORSE / OOK':mode==='same'?'SAME / AFSK':`${modulation.toUpperCase()} / v2`;$('#scope-rate').textContent=mode==='morse'?`${$('#morse-wpm').value} WPM`:`${p.baud.toFixed(mode==='same'?2:0)} bit/s`;}
   try{
     let seconds,signalSize=size;
     if(mode==='custom'){
       const {data,meta}=payload();
       seconds=customDuration(data,meta,p,total);
-      if(!playing&&!listening){previewSamples=modulate(packet(data.slice(0,160),meta,{preambleBytes:customPreambleBytes(p)}),p,12000);previewRate=12000;}
+      if(!playing&&!listening){previewRate=p.carrier===20500?48000:12000;previewSamples=modulate(packet(data.slice(0,160),meta,{preambleBytes:customPreambleBytes(p)}),p,previewRate);}
     }else if(mode==='morse'){
       const signal=buildSignal();seconds=signal.samples.length/signal.sr;signalSize=signal.normalized.length;$('#morse-code').textContent=signal.code;$('#morse-normalized').textContent=signal.normalized;$('#morse-unit').textContent=`Dot ${Math.round(signal.unit*1000)} ms · Dash ${Math.round(signal.unit*3000)} ms`;
       if(!playing&&!listening){previewSamples=signal.samples;previewRate=signal.sr;}
@@ -138,9 +139,9 @@ function updatePreview(){
     $('#duration-estimate').textContent=timeLabel(seconds)+(mode==='same'&&$('#speak').checked&&!voice&&$('#announcement').value.trim()?' ≈':'');
     $('#size-estimate').textContent=mode==='same'||mode==='morse'?`${signalSize} chars`:bytesLabel(signalSize);$('#size-label').textContent=mode==='morse'?'Text':mode==='same'?'Header':'Message';
   }catch(error){$('#duration-estimate').textContent='—';$('#size-estimate').textContent=bytesLabel(size);if(!playing&&!listening)previewSamples=null;if(mode==='same')$('#header-preview').textContent=err(error);if(mode==='morse'){$('#morse-code').textContent=err(error);$('#morse-normalized').textContent='—';}}
-  if(!playing&&!listening)drawScope();
+  if(!playing&&!listening)drawScope();updateInspector();
 }
-$$('#morse-message,#morse-wpm,#message,#profile,#origin,#event,#locations,#duration,#sender,#issued,#auto-time,#attention,#speak,#announcement').forEach(n=>n.addEventListener('input',()=>{if(n.id==='morse-wpm'&&!listening){$('#morse-rx-wpm').value=n.value;updateReceiverSettings();}if(n.id==='auto-time')updateUTC();if(n.id==='locations')updateLocations();clearTimeout(previewTimer);previewTimer=setTimeout(updatePreview,120);}));
+$$('#morse-message,#morse-wpm,#message,#profile,#modulation,#carrier,#origin,#event,#locations,#duration,#sender,#issued,#auto-time,#attention,#speak,#announcement').forEach(n=>n.addEventListener('input',()=>{if(n.id==='morse-wpm'&&!listening){$('#morse-rx-wpm').value=n.value;updateReceiverSettings();}if(n.id==='auto-time')updateUTC();if(n.id==='locations')updateLocations();clearTimeout(previewTimer);previewTimer=setTimeout(updatePreview,120);}));
 // Selecting the signal must not play it; only an explicit confirmation enables it.
 $('#attention').onchange=()=>{
   if(!$('#attention').checked)return;
@@ -205,10 +206,11 @@ function speak(text){return new Promise((resolve,reject)=>{
 });}
 async function playCustom(plan,token){
   const c=await audioContext();if(token!==playToken)return;
+  requireCarrierRate(plan.profile.carrier,c.sampleRate);
   const duration=createCustomStream(plan.data,plan.meta,plan.profile,plan.total,plan.id,c.sampleRate).duration;
   let node,finish=()=>{};
   if(c.audioWorklet && typeof AudioWorkletNode!=='undefined'){
-    try{if(!loadedWorklets.has(c)){await c.audioWorklet.addModule(new URL('./custom-worklet.mjs?v=0.3.2',import.meta.url));loadedWorklets.add(c);}
+    try{if(!loadedWorklets.has(c)){await c.audioWorklet.addModule(new URL('./custom-worklet.mjs?v=0.3.8',import.meta.url));loadedWorklets.add(c);}
     if(token!==playToken)return;
     node=new AudioWorkletNode(c,'signal-lab-custom-transmitter',{numberOfInputs:0,numberOfOutputs:1,outputChannelCount:[1],processorOptions:plan});}catch(error){if(!c.createScriptProcessor)throw error;}
   }
@@ -255,9 +257,11 @@ for(const [id,freq]of [['bit-zero',1200],['bit-one',2400]])$(('#'+id)).onclick=a
 $('#byte-character').oninput=()=>{const s=$('#byte-character').value,bytes=utf.encode(s);$('#byte-output').textContent=bytes.length?Array.from(bytes,b=>`${b.toString(16).padStart(2,'0').toUpperCase()} → ${b.toString(2).padStart(8,'0')}`).join(' / '):'Type a character to see its UTF-8 bytes.';};
 
 function status(message,state='ready'){$('#rx-status').textContent=message;$('#rx-dot').classList.toggle('active',state==='active');$('#rx-dot').classList.toggle('error',state==='error');}
-function setBusy(value){busy=value;for(const id of ['loopback','demo','decoder-demo','audio-file'])$('#'+id).disabled=value||listening;$('#listen').disabled=value;$('.import-audio').classList.toggle('disabled',value||listening);}
-function makeWorker(sr,inputKind='recording'){
-  worker?.terminate();worker=new Worker(new URL('./receive-worker.mjs?v=0.3.2',import.meta.url),{type:'module'});const current=++job;lastTransfer=null;activeReceptionKey=null;lastSyncAt=0;$('#decode-stage').textContent='Waiting for a signal';
+function setBusy(value){busy=value;$('#rx-modulation').disabled=value||listening;$('#rx-carrier').disabled=value||listening;for(const id of ['loopback','demo','decoder-demo','audio-file'])$('#'+id).disabled=value||listening;$('#listen').disabled=value;$('.import-audio').classList.toggle('disabled',value||listening);}
+function requireCarrierRate(carrier,sr){if(+carrier===20500&&sr<44100)throw Error('The 20.5 kHz carrier needs an audio sample rate of at least 44.1 kHz. Try a different audio device or the 1.8 kHz carrier.');}
+function makeWorker(sr,inputKind='recording',modulation=$('#rx-modulation').value,carrier=+$('#rx-carrier').value){
+  if(modulation!=='bfsk')requireCarrierRate(carrier,sr);
+  worker?.terminate();worker=new Worker(new URL('./receive-worker.mjs?v=0.3.8',import.meta.url),{type:'module'});const current=++job;lastTransfer=null;activeReceptionKey=null;lastSyncAt=0;$('#decode-stage').textContent='Waiting for a signal';
   $('#copy-progress').hidden=true;$('#result').hidden=true;$('#result-source').hidden=true;$('#empty-result').hidden=false;
   worker.onmessage=({data})=>{
     if(data.job!==current)return;
@@ -275,26 +279,28 @@ function makeWorker(sr,inputKind='recording'){
     }
   };
   worker.onerror=e=>{streamAck?.(true);streamAck=null;setBusy(false);cleanupMicrophone();status('Decoder stopped. Reload the app and try again.','error');toast(e.message||'Audio worker failed.',true);};
-  worker.postMessage({type:'init',job:current,sr,sensitivity,morseWpm:+$('#morse-rx-wpm').value});return current;
+  worker.postMessage({type:'init',job:current,sr,sensitivity,modulation,carrier,morseWpm:+$('#morse-rx-wpm').value});return current;
 }
 try{sensitivity=localStorage.getItem('signal-lab-sensitivity')||'normal';}catch{}
 if(!['low','normal','high'].includes(sensitivity))sensitivity='normal';
-function updateReceiverSettings(){const labels={low:'Lower',normal:'Normal',high:'Higher'};$('.receiver-settings summary span').textContent=`${labels[sensitivity]} sensitivity · ${$('#morse-rx-wpm').value} WPM Morse`;}
+function updateReceiverSettings(){const modulation=$('#rx-modulation').value;$('#rx-carrier-field').hidden=modulation==='bfsk';$('#open-modulation-settings').textContent=modulation.toUpperCase()+(modulation==='bfsk'?'':` · ${(+$('#rx-carrier').value/1000).toFixed(1)} kHz`);const labels={low:'Lower',normal:'Normal',high:'Higher'};$('.receiver-settings summary span').textContent=`${labels[sensitivity]} sensitivity · ${$('#morse-rx-wpm').value} WPM Morse`;}
 function updateSensitivity(){
   $('#sensitivity').value=sensitivity;updateReceiverSettings();
   $('#sensitivity-help').textContent={low:'Strict sync detection for a clean signal. Useful if background sounds cause frequent false locks.',normal:'Automatic tone balancing with a small allowance for damaged sync bits. Start here.',high:'Lower detection floor and a wider sync search for weak signals. May show more false locks; checksums remain mandatory.'}[sensitivity];
 }
 $('#sensitivity').onchange=()=>{sensitivity=$('#sensitivity').value;try{localStorage.setItem('signal-lab-sensitivity',sensitivity);}catch{}updateSensitivity();worker?.postMessage({type:'sensitivity',job,sensitivity});};
 updateSensitivity();
+$('#open-modulation-settings').onclick=()=>{$('.receiver-settings').open=true;$('#rx-modulation').focus();};
+$('#rx-modulation').onchange=updateReceiverSettings;$('#rx-carrier').onchange=updateReceiverSettings;
 $('#open-morse-settings').onclick=()=>{$('.receiver-settings').open=true;$('#morse-rx-wpm').focus();};
 $('#morse-rx-wpm').onchange=()=>{updateReceiverSettings();worker?.postMessage({type:'morse-speed',job,wpm:+$('#morse-rx-wpm').value});};
 async function decodeSignal(samples,sr,label){
-  if(listening)throw Error('Stop the microphone before decoding a recording or running a demo.');setBusy(true);status(`Decoding ${label}…`,'active');const current=makeWorker(sr);$('#result-source').textContent=label==='the demo waveform'?'Demo result · generated on this device':label==='generated audio'?'Test result · generated on this device':`Imported recording · ${label}`;$('#result-source').hidden=false;showPage('decoder');
+  if(listening)throw Error('Stop the microphone before decoding a recording or running a demo.');setBusy(true);status(`Decoding ${label}…`,'active');const current=makeWorker(sr,'recording',label==='the demo waveform'?'bfsk':undefined);$('#result-source').textContent=label==='the demo waveform'?'Demo result · generated on this device':label==='generated audio'?'Test result · generated on this device':`Imported recording · ${label}`;$('#result-source').hidden=false;showPage('decoder');
   const length=sr*2;for(let at=0;at<samples.length;at+=length){const part=samples.slice(at,at+length);worker.postMessage({type:'audio',job:current,samples:part,done:at+length>=samples.length},[part.buffer]);}
   previewSamples=samples;previewRate=sr;drawScope();
 }
 async function decodeCustom(plan){
-  if(listening)throw Error('Stop the microphone before testing a signal.');setBusy(true);const generator=createCustomStream(plan.data,plan.meta,plan.profile,plan.total,plan.id),current=makeWorker(generator.sr);$('#result-source').textContent='Test result · generated on this device';$('#result-source').hidden=false;showPage('decoder');
+  if(listening)throw Error('Stop the microphone before testing a signal.');setBusy(true);const generator=createCustomStream(plan.data,plan.meta,plan.profile,plan.total,plan.id),current=makeWorker(generator.sr,'recording',plan.profile.modulation||'bfsk',plan.profile.carrier);$('#rx-modulation').value=plan.profile.modulation||'bfsk';if(plan.profile.carrier)$('#rx-carrier').value=String(plan.profile.carrier);updateReceiverSettings();$('#result-source').textContent='Test result · generated on this device';$('#result-source').hidden=false;showPage('decoder');
   $('#cancel-test').hidden=false;let sent=0;while(!generator.done&&current===job){const chunk=generator.read(generator.sr*2);sent+=chunk.length;status(`Testing generated audio · ${Math.round(sent/generator.length*100)}%`,'active');await new Promise((resolve,reject)=>{streamAck=failed=>failed?reject(Error('Decoder stopped.')):resolve();worker.postMessage({type:'audio',job:current,samples:chunk,done:generator.done,ack:true},[chunk.buffer]);});}
 }
 $('#cancel-test').onclick=()=>{job++;worker?.terminate();worker=null;streamAck?.();streamAck=null;$('#cancel-test').hidden=true;setBusy(false);status('Test cancelled.');};
@@ -317,7 +323,7 @@ function resetInputMonitor(){
   $('#decode-stage').textContent=lastTransfer?'Stopped · last result below':'Stopped';
 }
 function cleanupMicrophone(){
-  listening=false;listenToken++;const stoppedToken=listenToken;clearInterval(healthTimer);healthTimer=null;wakeLock.stop();
+  listening=false;$('#rx-modulation').disabled=busy;listenToken++;const stoppedToken=listenToken;clearInterval(healthTimer);healthTimer=null;wakeLock.stop();
   const owned={stream,capture,context:micCtx};stream=null;capture=null;micCtx=null;analyser=null;liveWave=null;
   const closing=releaseMicrophone(owned);micClosing=Promise.all([micClosing,closing]).then(()=>{
     if(stoppedToken===listenToken&&!listening){setAudioSession(playing?'playback':'auto');$('#diag-context').textContent='Closed / released';}
@@ -380,8 +386,8 @@ $('#listen').onclick=async()=>{
     capture=await attachCapture(c,input,samples=>{if(listening&&current===job){paintInputMetrics(samples,c.sampleRate);worker?.postMessage({type:'audio',job:current,samples},[samples.buffer]);}});
     await resumeAudioContext(c);
     if(token!==listenToken){capture.close();input.getTracks().forEach(t=>t.stop());return;}
-    analyser=capture.analyser;listening=true;setBusy(false);wakeLock.start();captureStarted=performance.now();$('#input-monitor').hidden=false;$('#input-state').textContent='Waiting for microphone samples';healthTimer=setInterval(checkCaptureHealth,500);$('#listen-label').textContent='Stop microphone';$('#listen').classList.add('listening');$('#rx-badge').textContent='Starting';setPlayUI();
-    $('#scope-protocol').textContent='Data / SAME / Morse';$('#scope-rate').textContent=`${(c.sampleRate/1000).toFixed(1)} kHz`;$('#scope-frequency').textContent='0.7–2.4 kHz';
+    analyser=capture.analyser;listening=true;$('#rx-modulation').disabled=true;setBusy(false);wakeLock.start();captureStarted=performance.now();$('#input-monitor').hidden=false;$('#input-state').textContent='Waiting for microphone samples';healthTimer=setInterval(checkCaptureHealth,500);$('#listen-label').textContent='Stop microphone';$('#listen').classList.add('listening');$('#rx-badge').textContent='Starting';setPlayUI();
+    $('#scope-protocol').textContent='Data / SAME / Morse';$('#scope-rate').textContent=`${(c.sampleRate/1000).toFixed(1)} kHz`;$('#scope-frequency').textContent=$('#rx-modulation').value!=='bfsk'&&+$('#rx-carrier').value===20500?'0.7–20.5 kHz':'0.7–2.4 kHz';
     $('#diag-engine').textContent=capture.method;$('#diag-rate').textContent=`${c.sampleRate.toLocaleString()} Hz`;$('#diag-input').textContent=input.getAudioTracks()[0]?.label||'Default microphone';$('#diagnostic-summary').textContent=capture.method;
     $('#diag-context').textContent=c.state;
     const settings=input.getAudioTracks()[0]?.getSettings?.()||{};
@@ -433,7 +439,7 @@ function resultCard(t,at){
     const isFile=!['text','json'].includes(frame.meta.kind),text=textDecoder.decode(frame.payload);
     if(isFile)card.append(el('p','result-text',String(frame.meta.name||'received.bin')),el('p','field-help',`${bytesLabel(frame.payload.length)} / ${String(frame.meta.mime||'binary data')}`));else card.append(el('pre','result-text',text));
     const actions=el('div','result-actions'),save=el('button','text-button',isFile?'Save original file ↓':'Save payload ↓');save.onclick=()=>download(frame.payload,isFile?String(frame.meta.name||'received.bin').replace(/[\/\\\x00-\x1f]/g,'_'):frame.meta.kind==='json'?'received.json':'received.txt');actions.append(save);
-    if(!isFile){const copy=el('button','text-button','Copy text');copy.onclick=()=>copyText(text);actions.append(copy);}card.append(actions,el('div','result-meta',`${frame.profile} / ${bytesLabel(frame.payload.length)} / CRC-32 passed${t.total>1?' / '+t.received.length+' matching copies':''}`));
+    if(!isFile){const copy=el('button','text-button','Copy text');copy.onclick=()=>copyText(text);actions.append(copy);}card.append(actions,el('div','result-meta',`${(frame.modulation||'bfsk').toUpperCase()}${frame.carrier?' · '+(frame.carrier/1000).toFixed(1)+' kHz':''} · ${frame.profile} / ${bytesLabel(frame.payload.length)} / CRC-32 passed${t.total>1?' / '+t.received.length+' matching copies':''}`));
     if(t.state==='incomplete'||t.state==='conflict')card.append(el('p','field-help',t.state==='conflict'?'Content differs across copies. Download contains the first valid copy.':'These bytes passed their checksum, but the declared set of copies is incomplete.'));
   }else{
     const fields=el('div','decoded-fields'),events={RWT:'Required Weekly Test',RMT:'Required Monthly Test',DMO:'Practice / Demo Warning',TOR:'Tornado Warning',SVR:'Severe Thunderstorm Warning',FFW:'Flash Flood Warning',CEM:'Civil Emergency Message'};
