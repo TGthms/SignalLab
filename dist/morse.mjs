@@ -3,11 +3,12 @@
 export const MORSE={A:'.-',B:'-...',C:'-.-.',D:'-..',E:'.',F:'..-.',G:'--.',H:'....',I:'..',J:'.---',K:'-.-',L:'.-..',M:'--',N:'-.',O:'---',P:'.--.',Q:'--.-',R:'.-.',S:'...',T:'-',U:'..-',V:'...-',W:'.--',X:'-..-',Y:'-.--',Z:'--..','0':'-----','1':'.----','2':'..---','3':'...--','4':'....-','5':'.....','6':'-....','7':'--...','8':'---..','9':'----.','É':'..-..','.':'.-.-.-',',':'--..--',':':'---...','?':'..--..',"'":'.----.','-':'-....-','/':'-..-.','(':'-.--.',')':'-.--.-','"':'.-..-.','=':'-...-','+':'.-.-.','@':'.--.-.'};
 const REVERSE=Object.fromEntries(Object.entries(MORSE).map(([char,code])=>[code,char]));
 export const MORSE_FREQUENCY=700;
+function inputError(message,values){const error=Error(message);if(values)error.i18nValues=values;return error;}
 export function morsePlan(text,wpm=15){
   if(!Number.isFinite(+wpm)||+wpm<5||+wpm>35)throw Error('Choose a Morse speed from 5 to 35 WPM.');
   const chars=Array.from(String(text));
   const unsupported=[...new Set(chars.filter(c=>!/^\s$/.test(c)&&!Object.hasOwn(MORSE,c.toUpperCase())))];
-  if(unsupported.length)throw Error('Unsupported Morse characters: '+unsupported.slice(0,8).join(' ') + '. Use the Morse table, or Custom data for other text.');
+  if(unsupported.length)throw inputError('Unsupported Morse characters: {characters}. Use the Morse table, or Custom data for other text.',{characters:unsupported.slice(0,8).join(' ')});
   const normalized=chars.map(c=>c.toUpperCase()).join('').trim().replace(/\s+/g,' ');
   if(!normalized)throw Error('Write a Morse message first.');if(normalized.length>120)throw Error('Keep Morse messages at 120 characters or fewer.');
   const unit=1.2/+wpm,segments=[],tokens=[];

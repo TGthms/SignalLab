@@ -7,7 +7,8 @@
   "scripts": {
     "start": "python3 serve.py",
     "test": "node tests/codec.test.mjs && node tests/transfers.test.mjs && node tests/locations.test.mjs && node tests/capture.test.mjs && node tests/acoustic.test.mjs && node tests/acquisition.test.mjs && node tests/session.test.mjs && node tests/monitor.test.mjs && node tests/morse.test.mjs && node tests/signal-plan.test.mjs && node tests/custom-stream.test.mjs && node tests/modulation.test.mjs && node tests/wav-reader.test.mjs && node tests/learning-share.test.mjs && node tests/eas-study.test.mjs",
-    "check": "node --check dist/app.mjs && node --check dist/codec.mjs && node --check dist/receive-worker.mjs && node --check dist/signal-plan.mjs && node --check dist/demo.mjs && node --check dist/custom-stream.mjs && node --check dist/custom-worklet.mjs && node --check dist/wav-reader.mjs && node --check dist/lesson-signal.mjs && node --check dist/share-settings.mjs"
+    "check": "node --check dist/app.mjs && node --check dist/codec.mjs && node --check dist/receive-worker.mjs && node --check dist/signal-plan.mjs && node --check dist/demo.mjs && node --check dist/custom-stream.mjs && node --check dist/custom-worklet.mjs && node --check dist/wav-reader.mjs && node --check dist/lesson-signal.mjs && node --check dist/share-settings.mjs && node --check dist/capture.mjs && node --check dist/morse.mjs && node --check dist/i18n.mjs",
+    "i18n:check": "python3 scripts/i18n-audit-all.py"
   },
   "engines": {
     "node": ">=22"

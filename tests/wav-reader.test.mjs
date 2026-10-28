@@ -33,7 +33,7 @@ const code=app.slice(app.indexOf('async function decodeWavFile('),app.indexOf("$
 const nodes=new Map(),$=id=>{if(!nodes.has(id))nodes.set(id,{hidden:false,textContent:''});return nodes.get(id);};
 let terminated=false,context;
 const worker={postMessage(){queueMicrotask(()=>context.streamAck(false));},terminate(){terminated=true;}};
-context=vm.createContext({$,worker,job:1,streamAck:null,makeWorker:()=>1,showPage(){},status(){},async *readWavChunks(){yield new Float32Array([0]);throw Error('read failed');}});
+context=vm.createContext({$,worker,job:1,streamAck:null,makeWorker:()=>1,showPage(){},status(){},formatNumber:(value,options)=>new Intl.NumberFormat('en',options).format(value),setLocalizedText(node,source,values={}){node.textContent=source.replace(/\{([A-Za-z][A-Za-z0-9_]*)\}/g,(_,key)=>String(values[key]??''));},async *readWavChunks(){yield new Float32Array([0]);throw Error('read failed');}});
 vm.runInContext(code,context);
 await assert.rejects(vm.runInContext("decodeWavFile({name:'bad.wav'},{frames:2,sr:48000})",context),/read failed/);
 assert(terminated);assert.equal(context.worker,null);assert.equal(context.job,2);assert.equal(context.streamAck,null);

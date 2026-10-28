@@ -39,7 +39,7 @@ export async function resumeAudioContext(context,timeoutMs=3000){
   try{
     await Promise.race([context.resume(),new Promise((_,reject)=>{timeout=setTimeout(()=>reject(Error('Audio is paused by the browser. Tap Restart microphone and keep this tab open.')),timeoutMs);})]);
   }finally{clearTimeout(timeout);}
-  if(context.state&&context.state!=='running')throw Error('Audio is still '+context.state+'. Tap Restart microphone.');
+  if(context.state&&context.state!=='running'){const error=Error('Audio is still {state}. Tap Restart microphone.');error.i18nValues={state:{source:context.state}};throw error;}
 }
 
 // Explicit media intent lets supporting iOS browsers route Web Audio like media

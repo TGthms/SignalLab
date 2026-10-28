@@ -25,6 +25,12 @@ input:focus,textarea:focus,select:focus{outline:1px solid var(--accent);outline-
 .theme-control{display:flex;align-items:center;gap:6px;color:var(--muted)}
 .theme-control svg{width:15px;height:15px}
 .theme-control select{border:none;background:transparent;font:10px var(--mono);padding:5px 1px;width:72px;color:var(--muted)}
+.language-control{display:flex;align-items:center;color:var(--muted)}
+.language-control select{border:none;background:transparent;font:10px var(--mono);padding:5px 1px;max-width:142px;color:var(--muted)}
+[dir="rtl"] .brand{direction:ltr}
+[dir="rtl"] code,[dir="rtl"] pre,[dir="rtl"] .code-parts,[dir="rtl"] .raw-header code{direction:ltr;unicode-bidi:isolate}
+[dir="rtl"] #scope-rate,[dir="rtl"] #scope-frequency,[dir="rtl"] #scope-window-end,[dir="rtl"] #duration-estimate,[dir="rtl"] #size-estimate,[dir="rtl"] #byte-count,[dir="rtl"] #input-db,[dir="rtl"] #playback-time,[dir="rtl"] #copy-status,[dir="rtl"] #copy-plan,[dir="rtl"] .scope-bottom span,[dir="rtl"] .scope-frequency strong,[dir="rtl"] .result-meta,[dir="rtl"] .decoded-raw,[dir="rtl"] .morse-preview code,[dir="rtl"] .packet-diagram,[dir="rtl"] .header-map>code{direction:ltr;unicode-bidi:isolate}
+[dir="rtl"] #locations,[dir="rtl"] #sender,[dir="rtl"] #issued,[dir="rtl"] #share-link,[dir="rtl"] #experiment-bits{direction:ltr;unicode-bidi:isolate;text-align:left}
 .app-container{max-width:1156px;margin:auto;padding:0 28px}
 .mode-nav{display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--line);margin:26px 0 26px;gap:16px}
 .main-modes,.extra-modes{display:flex;gap:3px}
@@ -279,6 +285,7 @@ footer b{font-weight:400;color:var(--accent);padding:0 5px}
 .app-version{font-size:7px;margin-left:0}
 .repo-link{font-size:9px}
 .theme-control select{font-size:9px;width:65px}
+.language-control select{font-size:9px;max-width:108px}
 .brand strong{font-size:16px}
 .app-container{padding:0 20px}
 .app-layout{display:flex;flex-direction:column;gap:21px}
@@ -309,6 +316,7 @@ footer{margin-top:25px;font-size:7px}
 .appbar-right{gap:13px}
 .theme-control{gap:3px}
 .theme-control select{width:64px}
+.language-control select{width:92px;max-width:92px}
 .app-container{padding:0 16px}
 .nav{padding:10px 9px 13px;font-size:10px;gap:5px}
 .extra-modes .nav{padding-left:10px;padding-right:10px}

@@ -1,6 +1,7 @@
 """Browser regressions for the main flows; run with Playwright's Python package."""
 import contextlib
 import http.server
+import json
 import socketserver
 import subprocess
 import tempfile
@@ -91,6 +92,42 @@ class WorkflowTests(unittest.TestCase):
         page.get_by_role('button', name='Morse code', exact=True).click()
         self.assertEqual(page.get_by_role('button', name='Morse code', exact=True).get_attribute('aria-pressed'), 'true')
         self.assertEqual(page.get_by_role('button', name='Sound & bits', exact=True).get_attribute('aria-pressed'), 'false')
+
+    def test_locales_cover_live_ui_policy_pages_persistence_and_rtl(self):
+        page = self.page
+        french = json.loads((ROOT / 'locales/fr.json').read_text(encoding='utf-8'))
+        arabic = json.loads((ROOT / 'locales/ar.json').read_text(encoding='utf-8'))
+        self.assertEqual(page.locator('#language option').count(), 30)
+        self.assertEqual(page.locator('#language option').evaluate_all('(nodes) => nodes.some(node => node.disabled)'), False)
+        locale_codes = page.locator('#language option').evaluate_all('(nodes) => nodes.map(node => node.value)')
+        for locale in locale_codes:
+            catalog = json.loads((ROOT / f'locales/{locale}.json').read_text(encoding='utf-8'))
+            page.locator('#language').select_option(locale)
+            page.wait_for_function('(code) => document.documentElement.lang === code', arg=locale)
+            self.assertEqual(page.locator('h1').inner_text(), catalog['Encoder'], locale)
+        page.locator('#language').select_option('fr')
+        page.wait_for_function("document.documentElement.lang === 'fr'")
+        self.assertEqual(page.locator('html').get_attribute('lang'), 'fr')
+        page.get_by_role('heading', name=french['Encoder'], level=1).wait_for()
+        speed_label = french['{profile} · {baud} bit/s'].format(profile=french['Balanced'], baud='300')
+        self.assertEqual(page.locator('#speed-preset-value').inner_text(), speed_label)
+        page.locator('.transmission-settings summary').click()
+        page.get_by_role('button', name='2×').click()
+        copy_summary = french['{modulation}{carrier} · {profile} · {total} {copyWord}'].format(
+            modulation='BFSK', carrier='', profile=french['Balanced'], total='2', copyWord=french['copies'])
+        self.assertEqual(page.locator('.transmission-settings summary span').inner_text(), copy_summary)
+        page.reload()
+        page.wait_for_function("document.documentElement.lang === 'fr'")
+        self.assertEqual(page.locator('html').get_attribute('lang'), 'fr')
+        page.goto(self.url + 'privacy.html')
+        page.wait_for_function("document.documentElement.lang === 'fr'")
+        self.assertEqual(page.locator('html').get_attribute('lang'), 'fr')
+        page.get_by_role('heading', name=french['Privacy notice'], level=1).wait_for()
+        page.locator('#language').select_option('ar')
+        page.wait_for_function("document.documentElement.lang === 'ar' && document.documentElement.dir === 'rtl'")
+        self.assertEqual(page.locator('html').get_attribute('lang'), 'ar')
+        self.assertEqual(page.locator('html').get_attribute('dir'), 'rtl')
+        page.get_by_role('heading', name=arabic['Privacy notice'], level=1).wait_for()
 
     def test_phase_modes_round_trip_and_receiver_matches(self):
         page = self.page

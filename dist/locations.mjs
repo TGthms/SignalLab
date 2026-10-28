@@ -6,4 +6,4 @@ export function describeLocation(code,rows){
   const stateRow=row||rows.find(r=>r[0].slice(1,3)===code.slice(1,3));
   return {code,partition:code[0],stateCode:code.slice(1,3),countyCode:code.slice(3),partitionName:PARTITIONS[+code[0]],name:row?.[1]||null,state:STATES[stateRow?.[2]]||stateRow?.[2]||null,exact:!!exact,label:row?`${row[1]}, ${STATES[row[2]]||row[2]}`:'Name not found in bundled NOAA directory'};
 }
-export function searchLocations(query,rows){const q=query.trim().toLowerCase();if(q.length<2)return [];return rows.filter(([code,name,abbr])=>`${code} ${name} ${abbr} ${STATES[abbr]||''}`.toLowerCase().includes(q)).slice(0,12);}
+export function searchLocations(query,rows,translateState=abbr=>STATES[abbr]||abbr){const q=query.trim().toLowerCase();if(q.length<2)return [];return rows.filter(([code,name,abbr])=>`${code} ${name} ${abbr} ${STATES[abbr]||''} ${translateState(abbr)||''}`.toLowerCase().includes(q)).slice(0,12);}

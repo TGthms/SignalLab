@@ -23,8 +23,8 @@ const falseResults=[],reject=new MorseDecoder(48000,e=>falseResults.push(e));rej
 console.log('PASS every table character, multiple messages in one Morse session and noise/custom-signal rejection');
 // Check the app renders every supported symbol in real table elements.
 const app=await readFile(new URL('../dist/app.mjs',import.meta.url),'utf8');
-function node(tag,className,text){return {tag,className,text,children:[],append(...items){this.children.push(...items);},setAttribute(){}};}
-const root=node('div'),tableContext=vm.createContext({MORSE,el:node,$:()=>root,playMorseExample(){}});
+function node(tag,className,text){return {tag,className,text,children:[],append(...items){this.children.push(...items);},replaceChildren(...items){this.children=[...items];},setAttribute(){}};}
+const root=node('div'),tableContext=vm.createContext({MORSE,el:node,uiEl:node,translate:text=>text,setLocalizedAttribute(){},$:()=>root,playMorseExample(){}});
 const code=app.slice(app.indexOf('function renderMorseTables('),app.indexOf('async function playMorseExample('));vm.runInContext(code+'\nrenderMorseTables()',tableContext);
 assert.equal(root.children.length,3);assert(root.children.every(n=>n.tag==='table'));
 function descendants(n){return [n,...n.children.flatMap(descendants)];}

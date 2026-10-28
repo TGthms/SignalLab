@@ -33,11 +33,12 @@ jobs:
           node tests/wav-reader.test.mjs
           node tests/learning-share.test.mjs
           node tests/eas-study.test.mjs
-          node --check dist/app.mjs
-          node --check dist/receive-worker.mjs
+          npm run check
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+      - name: Verify all localization catalogs
+        run: npm run i18n:check
       - name: Install browser test dependencies
         run: |
           python -m pip install playwright==1.56.0

@@ -1,4 +1,4 @@
-import {MorseDecoder} from './morse.mjs?v=0.2.4';
+import {MorseDecoder} from './morse.mjs?v=0.2.5';
 import {Receiver,PROFILES,phaseProfile} from './codec.mjs?v=0.3.8';
 import {TransferTracker,SameTracker} from './transfers.mjs?v=0.3.8';
 let receiver,tracker,same,morse,job=0,samplesProcessed=0,sampleRate=48000;

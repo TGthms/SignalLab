@@ -12,6 +12,10 @@ Choose **Encoder** to compose text, emoji, JSON, or a small file and turn it int
 
 For a one-device experiment, use **Run a demo** or the encoder's **Test in decoder** button (↻). These feed the actual generated audio waveform into the receiver, without microphone permission.
 
+## Languages
+
+Choose the interface language in the top bar: English, Español, Français, Deutsch, Italiano, Português (Brasil), Português (Portugal), Nederlands, Dansk, Svenska, Norsk bokmål, Suomi, Polski, Čeština, Magyar, Română, Ελληνικά, Türkçe, Русский, Українська, العربية, עברית, हिन्दी, ไทย, Tiếng Việt, Bahasa Indonesia, 日本語, 한국어, 简体中文, or 繁體中文. The selection is saved in your browser and applies to the app, learning content, and privacy and safety pages. Messages, files, recordings, and received content stay on the device and are never submitted to an external translation service.
+
 - **Light, dark, and system themes** with a saved preference.
 - **Custom data modulation:** BFSK, DBPSK, or DQPSK. Match the method on the receiver; BFSK remains the default and is compatible with older versions. Phase modes are experimental and offer 1.8 kHz or a 20.5 kHz carrier. The high carrier needs a sample rate of at least 44.1 kHz; real speaker and microphone support varies and the signal is not guaranteed inaudible. A successful Safari transmission from a 2022 MacBook Air M2 to an iPhone 16 Pro Max has been user-reported; manufacturer specifications alone do not establish compatibility with other devices.
 - **Settings links:** share the selected signal settings without message contents; the receiver chooses when to start its microphone.
