@@ -23,7 +23,7 @@ For a one-device experiment, use **Run a demo** or the encoder's **Test in decod
 - **Local educational lookup:** a bundled NOAA SAME directory names geographic areas and explains PSSCCC, FIPS state/county identifiers, and locally defined county partitions.
 - **Learn:** interactive bit tones, waveform and spectrum comparison, a UTF-8 byte inspector, annotated SAME headers, verification explanations, and reception tips.
 - **Input diagnostics:** high-frequency band-energy indication, real dBFS level, tone-energy detection, auto-scaled waveform, paused-capture recovery, and a local WAV export of the last 30 seconds. The capture history is bounded and is never uploaded.
-- **Receive log:** in-memory results from the current tab.
+- **Receive log:** up to 50 in-memory results from the current tab. Earlier messages in a listening session are also shown below the latest decoder result.
 
 ## Run locally
 

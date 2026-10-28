@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Keep earlier messages visible in the decoder during a listening session, with a link to the receive log.
+
 - Add speed presets with automatic decoder detection, settings-only receiver links, high-frequency input diagnostics, interactive waveform and spectrum comparisons, and chunked uncompressed WAV import.
 
 - Make the 20.5 kHz signal easier to find, combine the decoder’s method and carrier choices, and replace research examples with linked manufacturer specifications.

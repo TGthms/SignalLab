@@ -304,7 +304,7 @@ function requireCarrierRate(carrier,sr){if(+carrier===20500&&sr<44100)throw Erro
 function makeWorker(sr,inputKind='recording',modulation=receiverPlan().modulation,carrier=receiverPlan().carrier,rate=$('#rx-rate-auto').checked?'auto':speedProfiles[+$('#rx-speed-preset').value]){
   if(modulation!=='bfsk')requireCarrierRate(carrier,sr);
   worker?.terminate();worker=new Worker(new URL('./receive-worker.mjs?v=0.4.0',import.meta.url),{type:'module'});const current=++job;lastTransfer=null;activeReceptionKey=null;lastSyncAt=0;$('#decode-stage').textContent='Waiting for a signal';
-  $('#copy-progress').hidden=true;$('#result').hidden=true;$('#result-source').hidden=true;$('#empty-result').hidden=false;
+  $('#copy-progress').hidden=true;$('#result').hidden=true;$('#result-source').hidden=true;$('#empty-result').hidden=false;$('#earlier-receptions').hidden=true;$('#earlier-receptions-list').replaceChildren();
   worker.onmessage=({data})=>{
     if(data.job!==current)return;
     if(data.type==='audio-ack'){streamAck?.();streamAck=null;}
@@ -482,10 +482,10 @@ function renderProgress(t){
 }
 function upsertReception(t,key){let item=receptions.find(r=>r.key===key);if(!item){item={key,at:new Date(),transfer:t};receptions.unshift(item);if(receptions.length>50)receptions.pop();}else item.transfer=t;$('#count').textContent=receptions.length;renderHistory();return item;}
 function showTransfer(t,item){$('#decode-stage').textContent=t.protocol==='morse'?(t.state==='decoded'?'Morse decoded':t.state==='incomplete'?'Morse interrupted':'Reading Morse timing'):t.state==='verified'?'Payload verified':t.state==='incomplete'?'Incomplete copy set':t.state==='conflict'?'Copy conflict':t.frame?'Payload received; checking copies':'Transfer header read';renderProgress(t);$('#empty-result').hidden=true;$('#result').hidden=false;$('#result').replaceChildren(resultCard(t,item?.at||new Date()));status(transferStatus(t),t.state==='conflict'?'error':listening||busy?'active':'ready');}
-function receiveTracked(value,current){const key=`${current}:${value.id}`,known=receptions.some(r=>r.key===key),item=upsertReception(value,key);if(!known||key===activeReceptionKey){activeReceptionKey=key;lastTransfer=value;showTransfer(value,item);}}
+function receiveTracked(value,current){const key=`${current}:${value.id}`,known=receptions.some(r=>r.key===key),item=upsertReception(value,key);if(!known||key===activeReceptionKey){activeReceptionKey=key;lastTransfer=value;showTransfer(value,item);}renderEarlierReceptions();}
 function receiveCustom(t,current){receiveTracked({...t,protocol:'custom'},current);}
 function receiveSame(t,current){receiveTracked(t,current);}
-function receiveLegacy(frame,current){const t={id:`legacy-${frame.crc}`,protocol:'custom',frame,total:1,received:[0],announced:[0],state:'verified',legacy:true};lastTransfer=t;const item=upsertReception(t,`${current}:${t.id}`);showTransfer(t,item);}
+function receiveLegacy(frame,current){const t={id:`legacy-${frame.crc}`,protocol:'custom',frame,total:1,received:[0],announced:[0],state:'verified',legacy:true};lastTransfer=t;const key=`${current}:${t.id}`,item=upsertReception(t,key);activeReceptionKey=key;showTransfer(t,item);renderEarlierReceptions();}
 function resultCard(t,at){
   const frame=t.frame,card=el('div'),heading=el('div','result-heading');
   const label=t.state==='conflict'?'Copy conflict':t.protocol==='morse'?(t.state==='decoded'?'Morse decoded':t.state==='incomplete'?'Morse interrupted':'Receiving Morse'):t.protocol==='same'?(t.copies===3?'3 matching SAME headers':'SAME header / '+t.copies+' of 3'):t.legacy?'Legacy / CRC passed':t.state==='verified'?`${t.total} of ${t.total} copies verified`:t.state==='incomplete'?'Incomplete transfer':!frame?'Receiving transfer':'Payload received / verifying';
@@ -509,8 +509,9 @@ function resultCard(t,at){
   }
   return card;
 }
+function renderEarlierReceptions(){const section=$('#earlier-receptions'),list=$('#earlier-receptions-list'),previous=receptions.filter(item=>item.key.startsWith(`${job}:`)&&item.key!==activeReceptionKey);section.hidden=previous.length===0;list.replaceChildren();for(const item of previous){const card=el('article','earlier-reception-card');card.append(resultCard(item.transfer,item.at));list.append(card);}}
 function renderHistory(){const list=$('#history-list');list.replaceChildren();if(!receptions.length){list.append(el('div','history-empty','No receptions yet.'));return;}for(const item of receptions){const card=el('article','history-card');card.append(resultCard(item.transfer,item.at));list.append(card);}}
-$('#clear-history').onclick=()=>{receptions=[];$('#count').textContent='0';renderHistory();toast('Log cleared.');};
+$('#clear-history').onclick=()=>{receptions=[];$('#count').textContent='0';renderHistory();renderEarlierReceptions();toast('Log cleared.');};
 
 function renderMorseTables(){
   const root=$('#morse-tables');

@@ -33,7 +33,7 @@ console.log('PASS one uninterrupted worker session: 3 custom messages, mixed pro
 const app=await readFile(new URL('../dist/app.mjs',import.meta.url),'utf8');
 const routing=app.slice(app.indexOf('function receiveTracked('),app.indexOf('function receiveLegacy('));
 const shown=[],context=vm.createContext({shown,receptions:[],activeReceptionKey:null,lastTransfer:null,
-  showTransfer(t){shown.push(t);}});
+  showTransfer(t){shown.push(t);},renderEarlierReceptions(){}});
 vm.runInContext(`function upsertReception(transfer,key){let item=receptions.find(r=>r.key===key);if(!item){item={key,transfer};receptions.unshift(item);}else item.transfer=transfer;return item;}\n${routing}`,context);
 vm.runInContext(`receiveCustom({id:'first',state:'receiving'},7);receiveCustom({id:'second',state:'verified',frame:{payload:'second'}},7);receiveCustom({id:'first',state:'incomplete'},7);`,context);
 assert.equal(shown.at(-1).id,'second');assert.equal(shown.length,2);

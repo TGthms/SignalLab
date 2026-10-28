@@ -222,3 +222,5 @@ footer{font-size:11px;letter-spacing:0}
 .speed-preset input[type=range]::-moz-range-track{height:10px;border-radius:999px;background:var(--line)}
 .speed-preset input[type=range]::-moz-range-progress{height:10px;border-radius:999px;background:var(--accent)}
 .speed-preset input[type=range]::-moz-range-thumb{width:24px;height:24px;border:1px solid var(--line);border-radius:50%;background:var(--text)}
+
+.earlier-receptions{margin:24px 0 0}.earlier-receptions-heading{display:flex;align-items:center;justify-content:space-between;gap:16px}.earlier-receptions-heading h2{font-size:15px;margin:0}.earlier-receptions>p{font-size:12px;color:var(--muted);margin:6px 0 12px}.earlier-reception-card{padding:18px;margin-top:10px;border:1px solid var(--line);border-radius:5px;background:var(--surface2);overflow-wrap:anywhere}.earlier-reception-card .result-text{max-height:160px}

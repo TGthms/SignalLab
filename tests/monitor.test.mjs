@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import vm from 'node:vm';
 import {readFile} from 'node:fs/promises';
 const app=await readFile(new URL('../dist/app.mjs',import.meta.url),'utf8');
-const nodes=new Map(),$=id=>{if(!nodes.has(id))nodes.set(id,{textContent:'stale',value:'bfsk',hidden:false,style:{width:'70%'},attrs:{},classList:{remove(){},toggle(){}},setAttribute(k,v){this.attrs[k]=v;}});return nodes.get(id);};
+const nodes=new Map(),$=id=>{if(!nodes.has(id))nodes.set(id,{textContent:'stale',value:'bfsk',hidden:false,style:{width:'70%'},attrs:{},classList:{remove(){},toggle(){}},replaceChildren(){},setAttribute(k,v){this.attrs[k]=v;}});return nodes.get(id);};
 const reset=app.slice(app.indexOf('function resetInputMonitor('),app.indexOf('function cleanupMicrophone('));
 const resetContext=vm.createContext({$,inputMetrics:{rms:.2},captureReady:true,capturedSamples:5000,lastTransfer:null});
 vm.runInContext(reset+'\nresetInputMonitor();',resetContext);

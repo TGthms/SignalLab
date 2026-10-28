@@ -207,6 +207,43 @@ while(!s.done)await f.write(pcm16(s.read(24000)));await f.close();"""
         page.wait_for_function("document.querySelector('#play-label').textContent === 'Stop'")
         page.wait_for_function("document.querySelector('#play-label').textContent === 'Transmit'", timeout=15000)
 
+    def test_live_microphone_keeps_earlier_messages_visible(self):
+        script = """import {writeFile} from 'node:fs/promises';
+import {packet,modulate,joinAudio,PROFILES,customPreambleBytes,wav} from './dist/codec.mjs';
+const p=PROFILES.balanced, sr=48000, meta={kind:'text'}, enc=new TextEncoder();
+const signals=['First message','Second message'].map((text,index)=>modulate(packet(enc.encode(text),meta,{id:index?'2222222222222222':'1111111111111111',preambleBytes:customPreambleBytes(p)}),p,sr));
+const audio=joinAudio([new Float32Array(sr),...signals,new Float32Array(sr)],sr,1);
+await writeFile(process.argv[1],new Uint8Array(wav(audio,sr)));"""
+        with tempfile.TemporaryDirectory() as directory:
+            path = str(Path(directory) / 'microphone.wav')
+            subprocess.run(['node', '--input-type=module', '-e', script, path], cwd=str(ROOT.parent), check=True)
+            browser = self.playwright.chromium.launch(args=[
+                '--use-fake-device-for-media-stream',
+                '--use-fake-ui-for-media-stream',
+                '--use-file-for-fake-audio-capture=' + path + '%noloop',
+            ])
+            try:
+                context = browser.new_context(permissions=['microphone'], viewport={'width': 390, 'height': 844})
+                page = context.new_page()
+                page.goto(self.url)
+                page.wait_for_function("location.hash === '#encoder'")
+                page.locator('.nav[data-page=decoder]').click()
+                page.locator('#listen').click()
+                page.locator('#result').get_by_text('First message', exact=True).wait_for(timeout=20000)
+                page.locator('#result').get_by_text('Second message', exact=True).wait_for(timeout=20000)
+                previous = page.locator('#earlier-receptions')
+                self.assertTrue(previous.get_by_text('First message', exact=True).is_visible())
+                self.assertTrue(page.locator('#result').get_by_text('Second message', exact=True).is_visible())
+                self.assertEqual(page.locator('#count').inner_text(), '2')
+                page.locator('#listen').click()
+                self.assertTrue(previous.get_by_text('First message', exact=True).is_visible())
+                previous.get_by_role('button', name='Open log').click()
+                self.assertTrue(page.locator('#history-list').get_by_text('First message', exact=True).is_visible())
+                self.assertTrue(page.locator('#history-list').get_by_text('Second message', exact=True).is_visible())
+                context.close()
+            finally:
+                browser.close()
+
     def test_same_study_context(self):
         page = self.page
         page.get_by_role('button', name='EAS / SAME', exact=True).click()
