@@ -930,5 +930,17 @@
   "{received} / {total} copies verified. CRC-32 passed.": "{received} copie(s) sur {total} vérifiée(s). CRC-32 validé.",
   "{received} / {total} copies verified. Waiting for {count} more.": "{received} copie(s) sur {total} vérifiée(s). En attente de {count} autre(s).",
   "{received} / {total} copies verified. {result}": "{received} copie(s) sur {total} vérifiée(s). {result}",
-  "{received} / {total} copies verified. {detail}": "{received} copie(s) sur {total} vérifiée(s). {detail}"
+  "{received} / {total} copies verified. {detail}": "{received} copie(s) sur {total} vérifiée(s). {detail}",
+  "47 CFR § 11.31 ↗": "47 CFR § 11.31 ↗",
+  "Browse locations": "Parcourir les lieux",
+  "EAS event reference": "Référence des événements EAS",
+  "Event names follow the FCC reference and may appear in English.": "Les noms des événements suivent la référence de la FCC et peuvent apparaître en anglais.",
+  "Language preference is also stored on this device.": "La préférence de langue est également enregistrée sur cet appareil.",
+  "NOAA": "NOAA",
+  "NOAA marine areas ↗": "Zones marines NOAA ↗",
+  "The event descriptions are in English.": "Les descriptions des événements sont en anglais.",
+  "NOAA: event codes ↗": "NOAA: event codes ↗",
+  "NOAA: non-weather definitions ↗": "NOAA: non-weather definitions ↗",
+  "Select a place to add its code.": "Sélectionnez un lieu pour ajouter son code.",
+  "This directory covers counties and territories; see NOAA for marine codes.": "Ce répertoire couvre les comtés et territoires ; consultez NOAA pour les codes maritimes."
 }

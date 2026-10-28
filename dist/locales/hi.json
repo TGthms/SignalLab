@@ -930,5 +930,17 @@
   "≋": "≋",
   "⌁": "⌁",
   "▶": "▶",
-  "✓": "✓"
+  "✓": "✓",
+  "47 CFR § 11.31 ↗": "47 CFR § 11.31 ↗",
+  "Browse locations": "स्थान देखें",
+  "EAS event reference": "EAS इवेंट संदर्भ",
+  "Event names follow the FCC reference and may appear in English.": "इवेंट के नाम FCC संदर्भ के अनुसार हैं और अंग्रेज़ी में दिख सकते हैं।",
+  "Language preference is also stored on this device.": "भाषा की प्राथमिकता भी इस डिवाइस पर सहेजी जाती है।",
+  "NOAA": "NOAA",
+  "NOAA marine areas ↗": "NOAA समुद्री क्षेत्र ↗",
+  "The event descriptions are in English.": "इवेंट के विवरण अंग्रेज़ी में हैं।",
+  "NOAA: event codes ↗": "NOAA: event codes ↗",
+  "NOAA: non-weather definitions ↗": "NOAA: non-weather definitions ↗",
+  "Select a place to add its code.": "कोड जोड़ने के लिए कोई स्थान चुनें।",
+  "This directory covers counties and territories; see NOAA for marine codes.": "इस निर्देशिका में काउंटियाँ और क्षेत्र हैं; समुद्री कोड के लिए NOAA देखें।"
 }

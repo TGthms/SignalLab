@@ -930,5 +930,17 @@
   "≋": "≋",
   "⌁": "⌁",
   "▶": "▶",
-  "✓": "✓"
+  "✓": "✓",
+  "47 CFR § 11.31 ↗": "47 CFR § 11.31 ↗",
+  "Browse locations": "Переглянути місця",
+  "EAS event reference": "Довідник подій EAS",
+  "Event names follow the FCC reference and may appear in English.": "Назви подій відповідають довіднику FCC і можуть відображатися англійською.",
+  "Language preference is also stored on this device.": "Вибрану мову також збережено на цьому пристрої.",
+  "NOAA": "NOAA",
+  "NOAA marine areas ↗": "Морські райони NOAA ↗",
+  "The event descriptions are in English.": "Описи подій наведено англійською мовою.",
+  "NOAA: event codes ↗": "NOAA: event codes ↗",
+  "NOAA: non-weather definitions ↗": "NOAA: non-weather definitions ↗",
+  "Select a place to add its code.": "Виберіть місце, щоб додати його код.",
+  "This directory covers counties and territories; see NOAA for marine codes.": "Довідник охоплює округи й території; морські коди доступні в NOAA."
 }

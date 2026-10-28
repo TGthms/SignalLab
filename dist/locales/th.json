@@ -930,5 +930,17 @@
   "≋": "≋",
   "⌁": "⌁",
   "▶": "▶",
-  "✓": "✓"
+  "✓": "✓",
+  "47 CFR § 11.31 ↗": "47 CFR § 11.31 ↗",
+  "Browse locations": "เรียกดูสถานที่",
+  "EAS event reference": "ข้อมูลอ้างอิงเหตุการณ์ EAS",
+  "Event names follow the FCC reference and may appear in English.": "ชื่อเหตุการณ์อ้างอิงตาม FCC และอาจแสดงเป็นภาษาอังกฤษ",
+  "Language preference is also stored on this device.": "การตั้งค่าภาษาจะบันทึกไว้ในอุปกรณ์นี้ด้วย",
+  "NOAA": "NOAA",
+  "NOAA marine areas ↗": "พื้นที่ทางทะเลของ NOAA ↗",
+  "The event descriptions are in English.": "คำอธิบายเหตุการณ์เป็นภาษาอังกฤษ",
+  "NOAA: event codes ↗": "NOAA: event codes ↗",
+  "NOAA: non-weather definitions ↗": "NOAA: non-weather definitions ↗",
+  "Select a place to add its code.": "เลือกสถานที่เพื่อเพิ่มรหัส",
+  "This directory covers counties and territories; see NOAA for marine codes.": "ไดเรกทอรีนี้ครอบคลุมเคาน์ตีและดินแดน โปรดดูรหัสทางทะเลที่ NOAA"
 }

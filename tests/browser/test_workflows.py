@@ -5,6 +5,7 @@ import json
 import socketserver
 import subprocess
 import tempfile
+import time
 import threading
 import unittest
 from pathlib import Path
@@ -104,7 +105,7 @@ class WorkflowTests(unittest.TestCase):
             catalog = json.loads((ROOT / f'locales/{locale}.json').read_text(encoding='utf-8'))
             page.locator('#language').select_option(locale)
             page.wait_for_function('(code) => document.documentElement.lang === code', arg=locale)
-            self.assertEqual(page.locator('h1').inner_text(), catalog['Encoder'], locale)
+            self.assertEqual(page.locator('#page-encoder h1').inner_text(), catalog['Encoder'], locale)
         page.locator('#language').select_option('fr')
         page.wait_for_function("document.documentElement.lang === 'fr'")
         self.assertEqual(page.locator('html').get_attribute('lang'), 'fr')
@@ -128,6 +129,74 @@ class WorkflowTests(unittest.TestCase):
         self.assertEqual(page.locator('html').get_attribute('lang'), 'ar')
         self.assertEqual(page.locator('html').get_attribute('dir'), 'rtl')
         page.get_by_role('heading', name=arabic['Privacy notice'], level=1).wait_for()
+
+    def test_locale_detection_and_latest_selection_wins(self):
+        for requested, expected in [('zh-Hant-TW', 'zh-Hant'), ('zh-Hans-CN', 'zh-Hans'), ('zh', 'zh-Hans'), ('pt-BR-u-nu-latn', 'pt-BR'), ('fr-CA', 'fr')]:
+            context = self.browser.new_context(locale=requested)
+            try:
+                page = context.new_page()
+                page.goto(self.url)
+                page.wait_for_function('(code) => document.documentElement.lang === code', arg=expected)
+            finally:
+                context.close()
+        page = self.page
+        page.route('**/locales/fr.json*', lambda route: (time.sleep(.5), route.continue_()))
+        page.evaluate("""() => {
+            const select = document.querySelector('#language');
+            select.value = 'fr'; select.dispatchEvent(new Event('change'));
+            select.value = 'en'; select.dispatchEvent(new Event('change'));
+        }""")
+        page.wait_for_timeout(800)
+        self.assertEqual(page.locator('html').get_attribute('lang'), 'en')
+        self.assertEqual(page.locator('#language').input_value(), 'en')
+
+    def test_localized_mobile_layout_controls_and_plural(self):
+        page = self.page
+        for width in (320, 390):
+            page.set_viewport_size({'width': width, 'height': 844})
+            for locale in ('en', 'de', 'el', 'uk', 'ar', 'he', 'cs'):
+                page.locator('#language').select_option(locale)
+                page.wait_for_function('(code) => document.documentElement.lang === code', arg=locale)
+                self.assertEqual(page.evaluate('document.documentElement.scrollWidth <= innerWidth'), True, (width, locale))
+                for control in ('#language', '#theme'):
+                    self.assertGreaterEqual(page.locator(control).bounding_box()['height'], 44)
+        page.locator('#language').select_option('cs')
+        page.wait_for_function("document.documentElement.lang === 'cs'")
+        page.locator('.transmission-settings summary').click()
+        for count in (2, 3):
+            page.locator(f'[data-repeat="{count}"]').click()
+            self.assertIn(f'{count} kopie', page.locator('.transmission-settings summary span').inner_text())
+        page.locator('#language').select_option('ar')
+        page.wait_for_function("document.documentElement.lang === 'ar'")
+        page.locator('[data-repeat="2"]').click()
+        self.assertIn('نسختين', page.locator('.transmission-settings summary span').inner_text())
+
+    def test_event_catalog_and_location_reference(self):
+        page = self.page
+        page.locator('#same-mode').click()
+        self.assertGreaterEqual(page.locator('#event option').count(), 50)
+        page.locator('#event').select_option('AVA')
+        page.wait_for_timeout(200)
+        self.assertIn('-AVA-', page.locator('#header-preview').inner_text())
+        page.locator('#location-reference summary').click()
+        page.locator('#location-reference-state').select_option('TX')
+        row = page.locator('#location-reference-list button').filter(has_text='Travis')
+        self.assertIn('048453', row.inner_text())
+        row.click()
+        self.assertIn('048453', page.locator('#locations').input_value())
+        page.locator('#location-reference-partition').select_option('2')
+        self.assertIn('248453', row.inner_text())
+        row.click()
+        self.assertIn('248453', page.locator('#locations').input_value())
+        page.locator('#loopback').click()
+        page.locator('#result').get_by_text('Avalanche Watch').wait_for(timeout=15000)
+        self.assertIn('AVA', page.locator('#result').inner_text())
+        page.locator('.nav[data-page=learn]').click()
+        page.locator('.lesson-tabs [data-lesson=same]').click()
+        page.locator('.event-reference summary').click()
+        self.assertEqual(page.locator('#event-reference-list .event-reference-entry').count(), 57)
+        self.assertTrue(page.locator('#event-reference-list').get_by_text('AVA', exact=True).is_visible())
+        self.assertEqual(page.locator('#event-reference-list').get_attribute('lang'), 'en')
 
     def test_phase_modes_round_trip_and_receiver_matches(self):
         page = self.page

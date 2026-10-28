@@ -930,5 +930,17 @@
   "≋": "≋",
   "⌁": "⌁",
   "▶": "▶",
-  "✓": "✓"
+  "✓": "✓",
+  "47 CFR § 11.31 ↗": "47 CFR § 11.31 ↗",
+  "Browse locations": "浏览地点",
+  "EAS event reference": "EAS 事件参考",
+  "Event names follow the FCC reference and may appear in English.": "事件名称依据 FCC 参考资料，可能以英语显示。",
+  "Language preference is also stored on this device.": "语言偏好也会保存在此设备上。",
+  "NOAA": "NOAA",
+  "NOAA marine areas ↗": "NOAA 海域 ↗",
+  "The event descriptions are in English.": "事件说明以英语提供。",
+  "NOAA: event codes ↗": "NOAA: event codes ↗",
+  "NOAA: non-weather definitions ↗": "NOAA: non-weather definitions ↗",
+  "Select a place to add its code.": "选择地点以添加其代码。",
+  "This directory covers counties and territories; see NOAA for marine codes.": "此目录涵盖县和领地；海域代码请参阅 NOAA。"
 }

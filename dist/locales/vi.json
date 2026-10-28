@@ -930,5 +930,17 @@
   "≋": "≋",
   "⌁": "⌁",
   "▶": "▶",
-  "✓": "✓"
+  "✓": "✓",
+  "47 CFR § 11.31 ↗": "47 CFR § 11.31 ↗",
+  "Browse locations": "Duyệt địa điểm",
+  "EAS event reference": "Tài liệu sự kiện EAS",
+  "Event names follow the FCC reference and may appear in English.": "Tên sự kiện theo tài liệu FCC và có thể hiển thị bằng tiếng Anh.",
+  "Language preference is also stored on this device.": "Tùy chọn ngôn ngữ cũng được lưu trên thiết bị này.",
+  "NOAA": "NOAA",
+  "NOAA marine areas ↗": "Vùng biển NOAA ↗",
+  "The event descriptions are in English.": "Phần mô tả sự kiện bằng tiếng Anh.",
+  "NOAA: event codes ↗": "NOAA: event codes ↗",
+  "NOAA: non-weather definitions ↗": "NOAA: non-weather definitions ↗",
+  "Select a place to add its code.": "Chọn một địa điểm để thêm mã.",
+  "This directory covers counties and territories; see NOAA for marine codes.": "Danh mục này gồm các hạt và vùng lãnh thổ; xem NOAA để biết mã vùng biển."
 }

@@ -930,5 +930,17 @@
   "Write a Morse message first.": "Scrivi prima un messaggio Morse.",
   "{signal} / {size} / CRC-32 passed{copies}": "{signal} / {size} / CRC-32 superato{copies}",
   " End markers: {copies}/3.": " Marcatori di fine: {copies}/3.",
-  "{received} / {total} copies verified. {result}": "{received} copie/e su {total} verificata/e. {result}"
+  "{received} / {total} copies verified. {result}": "{received} copie/e su {total} verificata/e. {result}",
+  "47 CFR § 11.31 ↗": "47 CFR § 11.31 ↗",
+  "Browse locations": "Esplora località",
+  "EAS event reference": "Riferimento eventi EAS",
+  "Event names follow the FCC reference and may appear in English.": "I nomi degli eventi seguono il riferimento FCC e possono apparire in inglese.",
+  "Language preference is also stored on this device.": "Anche la preferenza della lingua viene salvata su questo dispositivo.",
+  "NOAA": "NOAA",
+  "NOAA marine areas ↗": "Zone marine NOAA ↗",
+  "The event descriptions are in English.": "Le descrizioni degli eventi sono in inglese.",
+  "NOAA: event codes ↗": "NOAA: event codes ↗",
+  "NOAA: non-weather definitions ↗": "NOAA: non-weather definitions ↗",
+  "Select a place to add its code.": "Seleziona una località per aggiungere il suo codice.",
+  "This directory covers counties and territories; see NOAA for marine codes.": "Questa directory copre contee e territori; consulta NOAA per i codici marini."
 }

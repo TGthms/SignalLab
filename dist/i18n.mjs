@@ -45,12 +45,13 @@ const sourceAttributeValues = new WeakMap();
 const renderedAttributes = new WeakMap();
 const translatedAttributes = ['aria-label', 'aria-description', 'aria-valuetext', 'placeholder', 'title'];
 const excludedTextTags = new Set(['CODE', 'PRE', 'SCRIPT', 'STYLE', 'TEXTAREA']);
-const excludedContainers = '#result,#history-list,#earlier-receptions-list,#morse-tables,#location-summary,#location-search-results,#header-preview,#morse-code,#morse-normalized,#payload-name,#diag-input';
+const excludedContainers = '#result,#history-list,#earlier-receptions-list,#morse-tables,#location-summary,#location-search-results,#location-reference-list,#event-reference-list,#header-preview,#morse-code,#morse-normalized,#payload-name,#diag-input';
 
 let activeLocale = 'en';
 let activeMessages = Object.create(null);
 let activePatterns = [];
 let observer;
+let localeRequest = 0;
 
 export const getLocale = () => activeLocale;
 export const formatNumber = (value, options) => new Intl.NumberFormat(activeLocale, options).format(value);
@@ -180,14 +181,20 @@ function detectLocale() {
   if (locales[saved]) return saved;
   for (const candidate of navigator.languages || [navigator.language]) {
     if (!candidate) continue;
-    const exact = candidate.toLowerCase();
-    if (exact === 'zh-cn' || exact === 'zh-sg') return 'zh-Hans';
-    if (exact === 'zh-tw' || exact === 'zh-hk' || exact === 'zh-mo') return 'zh-Hant';
-    if (exact === 'pt' || exact.startsWith('pt-pt') || (exact.startsWith('pt-') && !exact.startsWith('pt-br'))) return 'pt-PT';
-    if (exact === 'no' || exact.startsWith('no-')) return 'nb';
-    if (exact === 'iw' || exact.startsWith('iw-')) return 'he';
+    let tag;
+    try { tag = new Intl.Locale(candidate); } catch { continue; }
+    const language = tag.language.toLowerCase();
+    const exact = tag.baseName.toLowerCase();
+    if (language === 'zh') {
+      const script = tag.script || (['TW','HK','MO'].includes(tag.region) ? 'Hant' : 'Hans');
+      if (script === 'Hant' || script === 'Hans') return `zh-${script}`;
+      continue;
+    }
+    if (language === 'pt') return tag.region === 'BR' ? 'pt-BR' : 'pt-PT';
+    if (language === 'no') return 'nb';
+    if (language === 'iw') return 'he';
     const match = localeEntries.find(([code]) => code.toLowerCase() === exact)
-      || localeEntries.find(([code]) => code.toLowerCase() === exact.split('-')[0]);
+      || localeEntries.find(([code]) => code.toLowerCase() === language);
     if (match) return match[0];
   }
   return 'en';
@@ -195,7 +202,7 @@ function detectLocale() {
 
 async function readMessages(code) {
   if (code === 'en') return Object.create(null);
-  const response = await fetch(new URL(`./locales/${code}.json`, import.meta.url));
+  const response = await fetch(new URL(`./locales/${code}.json?v=0.7.1`, import.meta.url));
   if (!response.ok) throw new Error(`Locale ${code} is not available.`);
   const value = await response.json();
   if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error(`Locale ${code} has an invalid message catalog.`);
@@ -209,14 +216,17 @@ export async function setLocale(code) {
     if (selector) selector.value = activeLocale;
     return false;
   }
+  const request = ++localeRequest;
   let messages;
   try {
     messages = await readMessages(code);
   } catch {
+    if (request !== localeRequest) return false;
     const selector = document.querySelector('#language');
     if (selector) selector.value = activeLocale;
     return false;
   }
+  if (request !== localeRequest) return false;
   activeLocale = code;
   activeMessages = messages;
   activePatterns = compilePatterns(messages);

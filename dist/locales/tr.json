@@ -930,5 +930,17 @@
   "≋": "≋",
   "⌁": "⌁",
   "▶": "▶",
-  "✓": "✓"
+  "✓": "✓",
+  "47 CFR § 11.31 ↗": "47 CFR § 11.31 ↗",
+  "Browse locations": "Konumlara göz at",
+  "EAS event reference": "EAS olay referansı",
+  "Event names follow the FCC reference and may appear in English.": "Olay adları FCC kaynağını izler ve İngilizce görünebilir.",
+  "Language preference is also stored on this device.": "Dil tercihi de bu cihazda saklanır.",
+  "NOAA": "NOAA",
+  "NOAA marine areas ↗": "NOAA deniz alanları ↗",
+  "The event descriptions are in English.": "Olay açıklamaları İngilizcedir.",
+  "NOAA: event codes ↗": "NOAA: event codes ↗",
+  "NOAA: non-weather definitions ↗": "NOAA: non-weather definitions ↗",
+  "Select a place to add its code.": "Kodunu eklemek için bir yer seçin.",
+  "This directory covers counties and territories; see NOAA for marine codes.": "Bu dizin ilçeleri ve bölgeleri kapsar; deniz kodları için NOAA’ya bakın."
 }

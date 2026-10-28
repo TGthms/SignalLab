@@ -930,5 +930,17 @@
   "≋": "≋",
   "⌁": "⌁",
   "▶": "▶",
-  "✓": "✓"
+  "✓": "✓",
+  "47 CFR § 11.31 ↗": "47 CFR § 11.31 ↗",
+  "Browse locations": "Helyek böngészése",
+  "EAS event reference": "EAS-események jegyzéke",
+  "Event names follow the FCC reference and may appear in English.": "Az események nevei az FCC hivatkozását követik, és angolul jelenhetnek meg.",
+  "Language preference is also stored on this device.": "A nyelvi beállítás is ezen az eszközön tárolódik.",
+  "NOAA": "NOAA",
+  "NOAA marine areas ↗": "NOAA tengeri területek ↗",
+  "The event descriptions are in English.": "Az események leírása angolul olvasható.",
+  "NOAA: event codes ↗": "NOAA: event codes ↗",
+  "NOAA: non-weather definitions ↗": "NOAA: non-weather definitions ↗",
+  "Select a place to add its code.": "Válasszon egy helyet a kód hozzáadásához.",
+  "This directory covers counties and territories; see NOAA for marine codes.": "A jegyzék megyéket és területeket tartalmaz; a tengeri kódokért lásd a NOAA oldalát."
 }

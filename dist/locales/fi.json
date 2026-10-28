@@ -930,5 +930,17 @@
   "{received} / {total} copies verified. {detail}": "{received} / {total} kopiota varmennettu. {detail}",
   "{received} / {total} copies verified. {result}": "{received} / {total} kopiota varmennettu. {result}",
   "{signal} / {size} / CRC-32 passed{copies}": "{signal} / {size} / CRC-32-tarkistus läpäisty{copies}",
-  "{value} · {baud} bits per second": "{value} · {baud} bittiä sekunnissa"
+  "{value} · {baud} bits per second": "{value} · {baud} bittiä sekunnissa",
+  "47 CFR § 11.31 ↗": "47 CFR § 11.31 ↗",
+  "Browse locations": "Selaa sijainteja",
+  "EAS event reference": "EAS-tapahtumien hakemisto",
+  "Event names follow the FCC reference and may appear in English.": "Tapahtumien nimet noudattavat FCC:n viitettä ja voivat näkyä englanniksi.",
+  "Language preference is also stored on this device.": "Kieliasetus tallennetaan myös tälle laitteelle.",
+  "NOAA": "NOAA",
+  "NOAA marine areas ↗": "NOAA:n merialueet ↗",
+  "The event descriptions are in English.": "Tapahtumakuvaukset ovat englanniksi.",
+  "NOAA: event codes ↗": "NOAA: event codes ↗",
+  "NOAA: non-weather definitions ↗": "NOAA: non-weather definitions ↗",
+  "Select a place to add its code.": "Lisää koodi valitsemalla paikka.",
+  "This directory covers counties and territories; see NOAA for marine codes.": "Hakemisto kattaa piirikunnat ja territoriot; merialueiden koodit ovat NOAA:ssa."
 }

@@ -86,7 +86,7 @@ def runtime_sources():
     ignored_exact = {"ABCDEFGHIJKLMNOPQRSTUVWXYZÉ", "SAME header / "}
     ignored_prefixes = (
         "signal-lab-", "eas-dialog-", "morse-received-code", "earlier-reception-",
-        "experiment-", "application/", "copy-slot ", "meta[", "(", "#", ".", "./",
+        "experiment-", "location-reference-", "event-reference-", "application/", "copy-slot ", "meta[", "(", "#", ".", "./",
     )
     ignored_suffixes = (".wav", ".txt", ".json", ".bin", ".mjs")
     sources = set()
@@ -176,7 +176,7 @@ def main():
         for source, expected, actual in placeholder_errors:
             print(f"{source}\n  expected: {expected}\n  found:    {actual}")
         raise SystemExit(1)
-    print(f"{args.locale}: all {len(sources)} page and runtime strings are translated")
+    print(f"{args.locale}: all {len(sources)} scanned page and runtime strings have catalog entries (English-language references excluded)")
 
 
 if __name__ == "__main__":

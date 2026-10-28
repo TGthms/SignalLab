@@ -930,5 +930,17 @@
   "closed": "lukket",
   "interrupted": "avbrutt",
   "running": "kjører",
-  "suspended": "suspendert"
+  "suspended": "suspendert",
+  "47 CFR § 11.31 ↗": "47 CFR § 11.31 ↗",
+  "Browse locations": "Bla gjennom steder",
+  "EAS event reference": "Oversikt over EAS-hendelser",
+  "Event names follow the FCC reference and may appear in English.": "Hendelsesnavn følger FCC-referansen og kan vises på engelsk.",
+  "Language preference is also stored on this device.": "Språkinnstillingen lagres også på denne enheten.",
+  "NOAA": "NOAA",
+  "NOAA marine areas ↗": "NOAA-havområder ↗",
+  "The event descriptions are in English.": "Hendelsesbeskrivelsene er på engelsk.",
+  "NOAA: event codes ↗": "NOAA: event codes ↗",
+  "NOAA: non-weather definitions ↗": "NOAA: non-weather definitions ↗",
+  "Select a place to add its code.": "Velg et sted for å legge til koden.",
+  "This directory covers counties and territories; see NOAA for marine codes.": "Katalogen dekker counties og territorier; se NOAA for marine koder."
 }

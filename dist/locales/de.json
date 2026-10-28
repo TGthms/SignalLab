@@ -930,5 +930,17 @@
   "running": "läuft",
   "suspended": "angehalten",
   "closed": "geschlossen",
-  "interrupted": "unterbrochen"
+  "interrupted": "unterbrochen",
+  "47 CFR § 11.31 ↗": "47 CFR § 11.31 ↗",
+  "Browse locations": "Orte durchsuchen",
+  "EAS event reference": "EAS-Ereignisübersicht",
+  "Event names follow the FCC reference and may appear in English.": "Ereignisnamen folgen der FCC-Referenz und können auf Englisch erscheinen.",
+  "Language preference is also stored on this device.": "Die Spracheinstellung wird ebenfalls auf diesem Gerät gespeichert.",
+  "NOAA": "NOAA",
+  "NOAA marine areas ↗": "NOAA-Meeresgebiete ↗",
+  "The event descriptions are in English.": "Die Ereignisbeschreibungen sind auf Englisch.",
+  "NOAA: event codes ↗": "NOAA: event codes ↗",
+  "NOAA: non-weather definitions ↗": "NOAA: non-weather definitions ↗",
+  "Select a place to add its code.": "Wähle einen Ort, um seinen Code hinzuzufügen.",
+  "This directory covers counties and territories; see NOAA for marine codes.": "Dieses Verzeichnis umfasst Counties und Gebiete; Codes für Meeresgebiete stehen bei NOAA."
 }

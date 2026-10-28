@@ -1,4 +1,5 @@
-import {formatDate,formatNumber,formatUnit,setLocalizedAttribute,setLocalizedParts,setLocalizedText,translate} from './i18n.mjs?v=0.7.0';
+import {formatDate,formatNumber,formatUnit,getLocale,setLocalizedAttribute,setLocalizedParts,setLocalizedText,translate} from './i18n.mjs?v=0.7.1';
+import {EAS_EVENTS,EVENT_GROUPS,eventExplanation} from './eas-events.mjs?v=0.1.0';
 import {lessonSignal,relativeSpectrum} from './lesson-signal.mjs?v=0.4.0';
 import {readWavInfo,readWavChunks} from './wav-reader.mjs?v=0.4.0';
 import {createReceiverLink,readReceiverLink} from './share-settings.mjs?v=0.4.0';
@@ -9,7 +10,7 @@ import {MORSE,MORSE_FREQUENCY,morsePlan,morseSignal} from './morse.mjs?v=0.2.5';
 import {PROFILES,phaseProfile,MAX_PAYLOAD,customPreambleBytes,packet,modulate,joinAudio,sameBytes,sameHeader,wav} from './codec.mjs?v=0.3.8';
 import {attachCapture,resumeAudioContext,configureAudioSession,releaseMicrophone,ListeningWakeLock} from './capture.mjs?v=0.2.5';
 import {measureInput,PcmHistory} from './reception.mjs?v=0.4.0';
-import {describeLocation,searchLocations,STATES} from './locations.mjs?v=0.3.0';
+import {describeLocation,searchLocations,STATES,PARTITIONS} from './locations.mjs?v=0.3.0';
 
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const utf=new TextEncoder(),textDecoder=new TextDecoder();
@@ -35,11 +36,12 @@ window.addEventListener('signal-lab-locale-change',()=>{
   const morseExample=$('#morse-example-text');
   try{$('#morse-example-code').textContent=morsePlan(morseExample.textContent,15).code;}
   catch{morseExample.textContent='HELLO WORLD';$('#morse-example-code').textContent='.... . .-.. .-.. --- / .-- --- .-. .-.. -..';}
-  renderMorseTables();updateLocations();renderHistory();renderEarlierReceptions();updateReceiverSettings();updateSensitivity();
+  renderMorseTables();updateLocations();renderLocationReference();renderHistory();renderEarlierReceptions();updateReceiverSettings();updateSensitivity();
   if(lastTransfer){const item=receptions.find(entry=>entry.key===activeReceptionKey);showTransfer(lastTransfer,item);}
   if($('#location-search').value.trim().length>=2)$('#location-search').dispatchEvent(new Event('input'));
   updatePreview();
 });
+const copyWord = count => {const locale=getLocale(),form=new Intl.PluralRules(locale).select(count);if(locale==='ar'&&form==='two')return 'نسختين';return {source:form==='one'||(locale==='cs'&&form==='few')?'copy':'copies'};};
 const bytesLabel=n=>n<1024?`${formatNumber(n)} B`:`${formatNumber(n/1024,{maximumFractionDigits:n%1024?1:0})} KiB`;
 const timeLabel=n=>n>=60?`${formatUnit(Math.floor(n/60),'minute')} ${formatUnit(Math.ceil(n%60),'second')}`:formatUnit(n,'second',{maximumFractionDigits:1});
 const err=e=>translate(e?.message||String(e),e?.i18nValues||{});
@@ -84,7 +86,7 @@ function updateInspector(){
 }
 
 // Bundled NOAA names keep place lookup local. Unknown codes are never invented.
-fetch(new URL('./data/locations.json',import.meta.url)).then(r=>{if(!r.ok)throw Error();return r.json();}).then(data=>{locationRows=data.rows;updateLocations();}).catch(()=>{setLocalizedText($('#location-summary'),'Location names could not load. Code format explanations are still available.');});
+fetch(new URL('./data/locations.json',import.meta.url)).then(r=>{if(!r.ok)throw Error();return r.json();}).then(data=>{locationRows=data.rows;updateLocations();initLocationReference();}).catch(()=>{setLocalizedText($('#location-summary'),'Location names could not load. Code format explanations are still available.');});
 function updateLocations(){
   const codes=$('#locations').value.split(/[,\s]+/).filter(Boolean),summary=$('#location-summary');summary.replaceChildren();
   for(const code of codes.slice(0,31)){
@@ -98,6 +100,37 @@ function updateLocations(){
   const first=describeLocation(codes[0]||'',locationRows),rail=$('#rail-location');rail.replaceChildren();
   if(first){const placeName=first.name?`${first.name}, ${translate(first.state||'')}`:translate('Name not found in bundled NOAA directory');rail.append(el('code','',`${first.partition} · ${first.stateCode} · ${first.countyCode}`),el('div','',placeName),el('div','field-help',translate(first.partitionName)));}
 }
+// The bundled directory is a snapshot, and non-zero partitions are only labels:
+// selecting one does not imply that local alert authorities actually use it.
+function initLocationReference(){
+  const states=$('#location-reference-state');states.replaceChildren();
+  for(const abbr of [...new Set(locationRows.map(row=>row[2]))].sort((a,b)=>(STATES[a]||a).localeCompare(STATES[b]||b))){const option=el('option','',STATES[abbr]||abbr);option.value=abbr;states.append(option);}
+  states.value='CA';const partition=$('#location-reference-partition');partition.replaceChildren();
+  PARTITIONS.forEach((name,index)=>{const option=el('option','',`${index} · ${name}`);option.value=String(index);partition.append(option);});
+  renderLocationReference();
+}
+function renderLocationReference(){
+  const states=$('#location-reference-state'),partition=$('#location-reference-partition'),list=$('#location-reference-list');
+  if(!states.options.length)return;
+  for(const option of states.options)option.textContent=translate(STATES[option.value]||option.value);
+  for(const option of partition.options)option.textContent=`${option.value} · ${translate(PARTITIONS[+option.value])}`;
+  list.replaceChildren();
+  for(const [code,name] of locationRows.filter(row=>row[2]===states.value)){
+    const actual=partition.value+code.slice(1),button=el('button','location-reference-item');button.type='button';
+    const label=el('span','',name),number=el('code','',actual);button.append(label,number,el('span','','+'));
+    button.onclick=()=>{const codes=$('#locations').value.split(/[,\s]+/).filter(Boolean);if(!codes.includes(actual)){if(codes.length>=31){toast('A header can include at most 31 areas.',true);return;}codes.push(actual);$('#locations').value=codes.join(', ');updateLocations();updatePreview();}};
+    list.append(button);
+  }
+}
+$('#location-reference-state').onchange=renderLocationReference;$('#location-reference-partition').onchange=renderLocationReference;
+// FCC titles and the short study explanations are explicitly marked English.
+for(const group of EVENT_GROUPS){const section=el('section','event-reference-group'),heading=el('h4','',group.name),list=el('dl');
+  for(const code of group.codes){const entry=el('div','event-reference-entry'),term=el('dt'),description=el('dd','',eventExplanation(code));term.append(el('code','',code),document.createTextNode(` · ${EAS_EVENTS[code]}`));entry.append(term,description);list.append(entry);}
+  section.append(heading,list);$('#event-reference-list').append(section);
+}
+// Keep the seven existing translated choices; add FCC names as an English
+// reference, marked with its language for assistive technology.
+for(const [code,name] of Object.entries(EAS_EVENTS))if(!$('#event').querySelector(`option[value="${code}"]`)){const option=el('option','',`${code} · ${name}`);option.value=code;option.lang='en';$('#event').append(option);}
 $('#toggle-location-help').onclick=()=>{const details=$('#location-help');details.open=!details.open;$('#toggle-location-help').setAttribute('aria-expanded',String(details.open));};
 $('#location-help').addEventListener('toggle',()=>$('#toggle-location-help').setAttribute('aria-expanded',String($('#location-help').open)));
 $('#location-search').oninput=()=>{
@@ -154,7 +187,7 @@ function updatePreview(){
   const size=kind==='file'?(payloadFile?.data.length||0):utf.encode($('#message').value).length;
   $('#byte-count').textContent=formatNumber(size);$('#byte-count').style.color=size>MAX_PAYLOAD?'var(--accent)':'';
   $('#profile-help').textContent={balanced:'Start here for short transfers between nearby devices.',resilient:'Longer symbols for a noisy channel. Three times the transfer time.',fast:'For clean recordings and controlled conditions. Shorter, less forgiving symbols.'}[$('#profile').value];
-  const total=+$('#repeat').value,modulation=$('#modulation').value,carrier=+$('#carrier').value;$('#carrier-field').hidden=modulation==='bfsk';const high=modulation!=='bfsk'&&carrier===20500;setLocalizedText($('#signal-high span'),'{modulation} · {frequency} kHz',{modulation:modulation==='bfsk'?'DBPSK':modulation.toUpperCase(),frequency:formatNumber(20.5,{minimumFractionDigits:1,maximumFractionDigits:1})});for(const [id,selected] of [['signal-standard',modulation==='bfsk'],['signal-high',high]]){const button=$('#'+id);button.classList.toggle('selected',selected);button.setAttribute('aria-pressed',String(selected));}$('#open-device-guide').hidden=!high;$('#signal-choice-help').textContent=high?'A 20.5 kHz signal can be harder to hear, but some people and animals can hear it. Start low; device support varies.':modulation==='bfsk'?'Two distinct pitches carry your message. Choose high frequency to explore a different sound.':'The carrier is audible. Choose high frequency to explore 20.5 kHz.';$('#modulation-help').firstChild.textContent={bfsk:'BFSK uses two pitches. Match this setting in the receiver. ',dbpsk:'DBPSK uses changes in carrier phase. Match this setting in the receiver. ',dqpsk:'DQPSK sends two bits per phase change. Match this setting in the receiver. '}[modulation];setLocalizedText($('.transmission-settings summary span'),'{modulation}{carrier} · {profile} · {total} {copyWord}',{modulation:modulation.toUpperCase(),carrier:modulation==='bfsk'?'':` · ${formatNumber(carrier/1000,{minimumFractionDigits:1,maximumFractionDigits:1})} kHz`,profile:{source:pSource($('#profile').value)},total:formatNumber(total),copyWord:{source:total===1?'copy':'copies'}});setLocalizedText($('#repeat-help'),total===1?'The receiver expects one copy and checks its CRC-32 checksum.':'The header announces {total} copies. Each must pass CRC-32 and match before the transfer is fully verified.',{total});
+  const total=+$('#repeat').value,modulation=$('#modulation').value,carrier=+$('#carrier').value;$('#carrier-field').hidden=modulation==='bfsk';const high=modulation!=='bfsk'&&carrier===20500;setLocalizedText($('#signal-high span'),'{modulation} · {frequency} kHz',{modulation:modulation==='bfsk'?'DBPSK':modulation.toUpperCase(),frequency:formatNumber(20.5,{minimumFractionDigits:1,maximumFractionDigits:1})});for(const [id,selected] of [['signal-standard',modulation==='bfsk'],['signal-high',high]]){const button=$('#'+id);button.classList.toggle('selected',selected);button.setAttribute('aria-pressed',String(selected));}$('#open-device-guide').hidden=!high;$('#signal-choice-help').textContent=high?'A 20.5 kHz signal can be harder to hear, but some people and animals can hear it. Start low; device support varies.':modulation==='bfsk'?'Two distinct pitches carry your message. Choose high frequency to explore a different sound.':'The carrier is audible. Choose high frequency to explore 20.5 kHz.';$('#modulation-help').firstChild.textContent={bfsk:'BFSK uses two pitches. Match this setting in the receiver. ',dbpsk:'DBPSK uses changes in carrier phase. Match this setting in the receiver. ',dqpsk:'DQPSK sends two bits per phase change. Match this setting in the receiver. '}[modulation];setLocalizedText($('.transmission-settings summary span'),'{modulation}{carrier} · {profile} · {total} {copyWord}',{modulation:modulation.toUpperCase(),carrier:modulation==='bfsk'?'':` · ${formatNumber(carrier/1000,{minimumFractionDigits:1,maximumFractionDigits:1})} kHz`,profile:{source:pSource($('#profile').value)},total:formatNumber(total),copyWord:copyWord(total)});setLocalizedText($('#repeat-help'),total===1?'The receiver expects one copy and checks its CRC-32 checksum.':'The header announces {total} copies. Each must pass CRC-32 and match before the transfer is fully verified.',{total});
   const p=mode==='same'?PROFILES.same:phaseProfile(PROFILES[$('#profile').value],modulation,carrier);
   if(!listening){$('#scope-frequency').textContent=mode==='morse'?'700 Hz':mode==='same'?`${formatNumber(1.56,{minimumFractionDigits:2,maximumFractionDigits:2})} / ${formatNumber(2.08,{minimumFractionDigits:2,maximumFractionDigits:2})} kHz`:modulation==='bfsk'?`${formatNumber(1.2,{minimumFractionDigits:1,maximumFractionDigits:1})} / ${formatNumber(2.4,{minimumFractionDigits:1,maximumFractionDigits:1})} kHz`:`${formatNumber(carrier/1000,{minimumFractionDigits:1,maximumFractionDigits:1})} kHz`;$('#scope-protocol').textContent=mode==='morse'?'MORSE / OOK':mode==='same'?'SAME / AFSK':`${modulation.toUpperCase()} / v2`;setLocalizedText($('#scope-rate'),mode==='morse'?'{rate} WPM':'{rate} bit/s',{rate:formatNumber(mode==='morse'?+$('#morse-wpm').value:p.baud,{minimumFractionDigits:mode==='same'?2:0,maximumFractionDigits:mode==='same'?2:0})});}
   try{
@@ -496,7 +529,7 @@ function renderProgress(t){
   if(t.protocol==='morse'){$('#copy-progress').hidden=true;return;}
   $('#copy-progress').hidden=false;const isSame=t.protocol==='same',received=isSame?Array.from({length:t.copies},(_,i)=>i):t.received;
   if(isSame||t.legacy)setLocalizedText($('#copy-plan'),isSame?'SAME / three header bursts':'Legacy packet / no copy plan');
-  else setLocalizedText($('#copy-plan'),'Transfer {id} / {total} {copyWord} expected',{id:t.id.slice(0,8),total:formatNumber(t.total),copyWord:{source:t.total===1?'copy':'copies'}});
+  else setLocalizedText($('#copy-plan'),'Transfer {id} / {total} {copyWord} expected',{id:t.id.slice(0,8),total:formatNumber(t.total),copyWord:copyWord(t.total)});
   $('#copy-status').textContent=`${formatNumber(received.length)} / ${formatNumber(t.total)}`;
   const slots=$('#copy-slots');slots.replaceChildren();for(let i=0;i<t.total;i++){const valid=received.includes(i),announced=!isSame&&t.announced?.includes(i),state=valid?'received':announced&&t.state==='receiving'?'announced':'';const slot=el('div','copy-slot '+state),label=valid?(isSame?'Matching':'Verified'):t.failed?.includes(i)?'CRC failed':announced?'Header only':t.state==='incomplete'?'Not detected':'Waiting';slot.append(uiEl('span','',`${valid?'✓':t.state==='incomplete'?'–':announced?'⋯':'○'} Copy ${formatNumber(i+1)}`),uiEl('small','',label));slots.append(slot);}
   if(isSame){setLocalizedParts($('#copy-explanation'),[{source:'{copies}/3 parsed headers match. SAME has no checksum; matching headers do not authenticate an alert.',values:{copies:formatNumber(t.copies)}},...(t.endCopies?[{source:' '},{source:'End markers: {copies}/3.',values:{copies:formatNumber(t.endCopies)}}]:[])]);return;}
@@ -531,9 +564,9 @@ function resultCard(t,at){
     if(!isFile){const copy=uiEl('button','text-button','Copy text');copy.onclick=()=>copyText(text);actions.append(copy);}const meta=el('div','result-meta'),carrier=frame.carrier?` · ${formatNumber(frame.carrier/1000,{minimumFractionDigits:1,maximumFractionDigits:1})} kHz`:'';setLocalizedParts(meta,[{source:'{modulation}{carrier} · {profile}',values:{modulation:(frame.modulation||'bfsk').toUpperCase(),carrier,profile:{source:frame.profile}}},{source:' / '},{source:bytesLabel(frame.payload.length)},{source:' / CRC-32 passed'},...(t.total>1?[{source:' / {count} matching copies',values:{count:formatNumber(t.received.length)}}]:[])]);card.append(actions,meta);
     if(t.state==='incomplete'||t.state==='conflict')card.append(uiEl('p','field-help',t.state==='conflict'?'Content differs across copies. Download contains the first valid copy.':'These bytes passed their checksum, but the declared set of copies is incomplete.'));
   }else{
-    const fields=el('div','decoded-fields'),events={RWT:'Required Weekly Test',RMT:'Required Monthly Test',DMO:'Practice / Demo Warning',TOR:'Tornado Warning',SVR:'Severe Thunderstorm Warning',FFW:'Flash Flood Warning',CEM:'Civil Emergency Message'};
+    const fields=el('div','decoded-fields'),events=EAS_EVENTS;
     const names=frame.locations.map(c=>{const d=describeLocation(c,locationRows),area=d?.name?`${d.name}, ${translate(d.state||'')}`:'Unknown area';return `${c} / ${area}`;}).join('; ');
-    for(const [name,value]of [['Event',frame.event],['Originator',frame.origin],['Geographical areas',names],['Purge time',`${formatNumber(+frame.duration.slice(0,2))}h ${formatNumber(+frame.duration.slice(2))}m`],['Issued / UTC',`Day ${formatNumber(+frame.issued.slice(0,3))} / ${frame.issued.slice(3,5)}:${frame.issued.slice(5)}`],['Station ID',frame.sender]]){const d=el('div'),valueNode=el('div');if(name==='Event')valueNode.append(el('span','',`${value} / `),uiEl('span','',events[value]||'Event code'));else valueNode.append(el('span','',value));d.append(uiEl('span','',name),valueNode);fields.append(d);}card.append(fields,el('div','decoded-raw',frame.raw),uiEl('div','result-meta',`${formatNumber(t.copies)}/3 matching headers / ${formatNumber(t.endCopies)}/3 end bursts / SAME has no CRC`));
+    for(const [name,value]of [['Event',frame.event],['Originator',frame.origin],['Geographical areas',names],['Purge time',`${formatNumber(+frame.duration.slice(0,2))}h ${formatNumber(+frame.duration.slice(2))}m`],['Issued / UTC',`Day ${formatNumber(+frame.issued.slice(0,3))} / ${frame.issued.slice(3,5)}:${frame.issued.slice(5)}`],['Station ID',frame.sender]]){const d=el('div'),valueNode=el('div');if(name==='Event'){const eventName=events[value]||'Event code',description=uiEl('span','',eventName);if(getLocale()!=='en'&&translate(eventName)===eventName)description.lang='en';valueNode.append(el('span','',`${value} / `),description);}else valueNode.append(el('span','',value));d.append(uiEl('span','',name),valueNode);fields.append(d);}card.append(fields,el('div','decoded-raw',frame.raw),uiEl('div','result-meta',`${formatNumber(t.copies)}/3 matching headers / ${formatNumber(t.endCopies)}/3 end bursts / SAME has no CRC`));
   }
   return card;
 }

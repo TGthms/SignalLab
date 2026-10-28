@@ -930,5 +930,17 @@
   "≋": "≋",
   "⌁": "⌁",
   "▶": "▶",
-  "✓": "✓"
+  "✓": "✓",
+  "47 CFR § 11.31 ↗": "47 CFR § 11.31 ↗",
+  "Browse locations": "지역 찾아보기",
+  "EAS event reference": "EAS 이벤트 안내",
+  "Event names follow the FCC reference and may appear in English.": "이벤트 이름은 FCC 자료를 따르며 영어로 표시될 수 있습니다.",
+  "Language preference is also stored on this device.": "언어 설정도 이 기기에 저장됩니다.",
+  "NOAA": "NOAA",
+  "NOAA marine areas ↗": "NOAA 해역 ↗",
+  "The event descriptions are in English.": "이벤트 설명은 영어로 제공됩니다.",
+  "NOAA: event codes ↗": "NOAA: event codes ↗",
+  "NOAA: non-weather definitions ↗": "NOAA: non-weather definitions ↗",
+  "Select a place to add its code.": "지역을 선택하여 코드를 추가하세요.",
+  "This directory covers counties and territories; see NOAA for marine codes.": "이 목록은 카운티와 영토를 포함합니다. 해역 코드는 NOAA를 참조하세요."
 }
