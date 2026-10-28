@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Make the 20.5 kHz signal easier to find, combine the decoder’s method and carrier choices, and replace research examples with linked manufacturer specifications.
+
 - Add experimental DBPSK and DQPSK custom-data modulation, matching receiver settings and a comparison in Learn. Phase modes also offer an experimental 20.5 kHz carrier and research-based device guidance.
 
 - Confirm before enabling the optional EAS attention signal and identify it in the playback warning.
