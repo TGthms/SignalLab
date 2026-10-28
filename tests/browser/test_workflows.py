@@ -94,6 +94,28 @@ class WorkflowTests(unittest.TestCase):
         self.assertEqual(page.get_by_role('button', name='Morse code', exact=True).get_attribute('aria-pressed'), 'true')
         self.assertEqual(page.get_by_role('button', name='Sound & bits', exact=True).get_attribute('aria-pressed'), 'false')
 
+    def test_theme_toggle_follows_system_then_persists_and_localizes(self):
+        page = self.page
+        page.emulate_media(color_scheme='light')
+        page.reload()
+        page.wait_for_function("document.documentElement.dataset.theme === 'light'")
+        self.assertEqual(page.locator('#theme-icon').get_attribute('href'), '#moon-icon')
+        self.assertEqual(page.locator('#theme').get_attribute('aria-label'), 'Switch to dark mode')
+        page.emulate_media(color_scheme='dark')
+        page.wait_for_function("document.documentElement.dataset.theme === 'dark'")
+        self.assertEqual(page.locator('#theme-icon').get_attribute('href'), '#sun-icon')
+        page.locator('#theme').click()
+        self.assertEqual(page.locator('html').get_attribute('data-theme'), 'light')
+        page.reload()
+        self.assertEqual(page.locator('html').get_attribute('data-theme'), 'light')
+        page.locator('#language').select_option('fr')
+        page.wait_for_function("document.documentElement.lang === 'fr'")
+        catalog = json.loads((ROOT / 'locales/fr.json').read_text(encoding='utf-8'))
+        self.assertEqual(page.locator('#theme').get_attribute('aria-label'), catalog['Switch to dark mode'])
+        page.locator('#theme').click()
+        self.assertEqual(page.locator('html').get_attribute('data-theme'), 'dark')
+        self.assertEqual(page.locator('#theme').get_attribute('aria-label'), catalog['Switch to light mode'])
+
     def test_locales_cover_live_ui_policy_pages_persistence_and_rtl(self):
         page = self.page
         french = json.loads((ROOT / 'locales/fr.json').read_text(encoding='utf-8'))

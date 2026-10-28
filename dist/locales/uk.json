@@ -942,5 +942,7 @@
   "NOAA: event codes ↗": "NOAA: event codes ↗",
   "NOAA: non-weather definitions ↗": "NOAA: non-weather definitions ↗",
   "Select a place to add its code.": "Виберіть місце, щоб додати його код.",
-  "This directory covers counties and territories; see NOAA for marine codes.": "Довідник охоплює округи й території; морські коди доступні в NOAA."
+  "This directory covers counties and territories; see NOAA for marine codes.": "Довідник охоплює округи й території; морські коди доступні в NOAA.",
+  "Switch to dark mode": "Перемкнути на темну тему",
+  "Switch to light mode": "Перемкнути на світлу тему"
 }

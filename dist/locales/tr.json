@@ -942,5 +942,7 @@
   "NOAA: event codes ↗": "NOAA: event codes ↗",
   "NOAA: non-weather definitions ↗": "NOAA: non-weather definitions ↗",
   "Select a place to add its code.": "Kodunu eklemek için bir yer seçin.",
-  "This directory covers counties and territories; see NOAA for marine codes.": "Bu dizin ilçeleri ve bölgeleri kapsar; deniz kodları için NOAA’ya bakın."
+  "This directory covers counties and territories; see NOAA for marine codes.": "Bu dizin ilçeleri ve bölgeleri kapsar; deniz kodları için NOAA’ya bakın.",
+  "Switch to dark mode": "Koyu moda geç",
+  "Switch to light mode": "Açık moda geç"
 }

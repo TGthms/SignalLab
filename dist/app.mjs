@@ -1,4 +1,4 @@
-import {formatDate,formatNumber,formatUnit,getLocale,setLocalizedAttribute,setLocalizedParts,setLocalizedText,translate} from './i18n.mjs?v=0.7.1';
+import {formatDate,formatNumber,formatUnit,getLocale,setLocalizedAttribute,setLocalizedParts,setLocalizedText,translate} from './i18n.mjs?v=0.7.2';
 import {EAS_EVENTS,EVENT_GROUPS,eventExplanation} from './eas-events.mjs?v=0.1.0';
 import {lessonSignal,relativeSpectrum} from './lesson-signal.mjs?v=0.4.0';
 import {readWavInfo,readWavChunks} from './wav-reader.mjs?v=0.4.0';
@@ -39,7 +39,7 @@ window.addEventListener('signal-lab-locale-change',()=>{
   renderMorseTables();updateLocations();renderLocationReference();renderHistory();renderEarlierReceptions();updateReceiverSettings();updateSensitivity();
   if(lastTransfer){const item=receptions.find(entry=>entry.key===activeReceptionKey);showTransfer(lastTransfer,item);}
   if($('#location-search').value.trim().length>=2)$('#location-search').dispatchEvent(new Event('input'));
-  updatePreview();
+  applyTheme();updatePreview();
 });
 const copyWord = count => {const locale=getLocale(),form=new Intl.PluralRules(locale).select(count);if(locale==='ar'&&form==='two')return 'نسختين';return {source:form==='one'||(locale==='cs'&&form==='few')?'copy':'copies'};};
 const bytesLabel=n=>n<1024?`${formatNumber(n)} B`:`${formatNumber(n/1024,{maximumFractionDigits:n%1024?1:0})} KiB`;
@@ -57,8 +57,8 @@ async function copyText(value){try{await navigator.clipboard.writeText(value);to
 try{themePreference=localStorage.getItem('signal-lab-theme')||'system';}catch{}
 if(!['system','light','dark'].includes(themePreference))themePreference='system';
 const colorQuery=matchMedia('(prefers-color-scheme: dark)');
-function applyTheme(){const theme=themePreference==='system'?(colorQuery.matches?'dark':'light'):themePreference;document.documentElement.dataset.theme=theme;$('#theme').value=themePreference;$('meta[name="theme-color"]').content=theme==='dark'?'#151616':'#efefed';}
-$('#theme').onchange=()=>{themePreference=$('#theme').value;try{localStorage.setItem('signal-lab-theme',themePreference);}catch{}applyTheme();};
+function applyTheme(){const theme=themePreference==='system'?(colorQuery.matches?'dark':'light'):themePreference;document.documentElement.dataset.theme=theme;$('#theme-icon').setAttribute('href',theme==='dark'?'#sun-icon':'#moon-icon');const label=theme==='dark'?'Switch to light mode':'Switch to dark mode';setLocalizedAttribute($('#theme'),'aria-label',label);setLocalizedAttribute($('#theme'),'title',label);$('meta[name="theme-color"]').content=theme==='dark'?'#151616':'#efefed';}
+$('#theme').onclick=()=>{themePreference=document.documentElement.dataset.theme==='dark'?'light':'dark';try{localStorage.setItem('signal-lab-theme',themePreference);}catch{}applyTheme();};
 colorQuery.addEventListener('change',()=>{if(themePreference==='system')applyTheme();});applyTheme();
 
 function showPage(next){

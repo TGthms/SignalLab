@@ -942,5 +942,7 @@
   "NOAA: event codes ↗": "NOAA: event codes ↗",
   "NOAA: non-weather definitions ↗": "NOAA: non-weather definitions ↗",
   "Select a place to add its code.": "เลือกสถานที่เพื่อเพิ่มรหัส",
-  "This directory covers counties and territories; see NOAA for marine codes.": "ไดเรกทอรีนี้ครอบคลุมเคาน์ตีและดินแดน โปรดดูรหัสทางทะเลที่ NOAA"
+  "This directory covers counties and territories; see NOAA for marine codes.": "ไดเรกทอรีนี้ครอบคลุมเคาน์ตีและดินแดน โปรดดูรหัสทางทะเลที่ NOAA",
+  "Switch to dark mode": "เปลี่ยนเป็นโหมดมืด",
+  "Switch to light mode": "เปลี่ยนเป็นโหมดสว่าง"
 }

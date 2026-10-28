@@ -942,5 +942,7 @@
   "NOAA: event codes ↗": "NOAA: event codes ↗",
   "NOAA: non-weather definitions ↗": "NOAA: non-weather definitions ↗",
   "Select a place to add its code.": "選取地點以新增其代碼。",
-  "This directory covers counties and territories; see NOAA for marine codes.": "此目錄涵蓋郡和領地；海域代碼請參閱 NOAA。"
+  "This directory covers counties and territories; see NOAA for marine codes.": "此目錄涵蓋郡和領地；海域代碼請參閱 NOAA。",
+  "Switch to dark mode": "切換至深色模式",
+  "Switch to light mode": "切換至淺色模式"
 }

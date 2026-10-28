@@ -942,5 +942,7 @@
   "NOAA: event codes ↗": "NOAA: event codes ↗",
   "NOAA: non-weather definitions ↗": "NOAA: non-weather definitions ↗",
   "Select a place to add its code.": "Vælg et sted for at tilføje koden.",
-  "This directory covers counties and territories; see NOAA for marine codes.": "Denne fortegnelse dækker counties og territorier; se NOAA for havkoder."
+  "This directory covers counties and territories; see NOAA for marine codes.": "Denne fortegnelse dækker counties og territorier; se NOAA for havkoder.",
+  "Switch to dark mode": "Skift til mørk tilstand",
+  "Switch to light mode": "Skift til lys tilstand"
 }

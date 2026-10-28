@@ -202,7 +202,7 @@ function detectLocale() {
 
 async function readMessages(code) {
   if (code === 'en') return Object.create(null);
-  const response = await fetch(new URL(`./locales/${code}.json?v=0.7.1`, import.meta.url));
+  const response = await fetch(new URL(`./locales/${code}.json?v=0.7.2`, import.meta.url));
   if (!response.ok) throw new Error(`Locale ${code} is not available.`);
   const value = await response.json();
   if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error(`Locale ${code} has an invalid message catalog.`);

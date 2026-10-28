@@ -942,5 +942,7 @@
   "NOAA: event codes ↗": "NOAA: event codes ↗",
   "NOAA: non-weather definitions ↗": "NOAA: non-weather definitions ↗",
   "Select a place to add its code.": "Lisää koodi valitsemalla paikka.",
-  "This directory covers counties and territories; see NOAA for marine codes.": "Hakemisto kattaa piirikunnat ja territoriot; merialueiden koodit ovat NOAA:ssa."
+  "This directory covers counties and territories; see NOAA for marine codes.": "Hakemisto kattaa piirikunnat ja territoriot; merialueiden koodit ovat NOAA:ssa.",
+  "Switch to dark mode": "Vaihda tummaan tilaan",
+  "Switch to light mode": "Vaihda vaaleaan tilaan"
 }

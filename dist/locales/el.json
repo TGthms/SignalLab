@@ -942,5 +942,7 @@
   "NOAA: event codes ↗": "NOAA: event codes ↗",
   "NOAA: non-weather definitions ↗": "NOAA: non-weather definitions ↗",
   "Select a place to add its code.": "Επιλέξτε μια τοποθεσία για να προσθέσετε τον κωδικό της.",
-  "This directory covers counties and territories; see NOAA for marine codes.": "Ο κατάλογος καλύπτει κομητείες και εδάφη· για θαλάσσιους κωδικούς δείτε τη NOAA."
+  "This directory covers counties and territories; see NOAA for marine codes.": "Ο κατάλογος καλύπτει κομητείες και εδάφη· για θαλάσσιους κωδικούς δείτε τη NOAA.",
+  "Switch to dark mode": "Μετάβαση στη σκοτεινή λειτουργία",
+  "Switch to light mode": "Μετάβαση στη φωτεινή λειτουργία"
 }

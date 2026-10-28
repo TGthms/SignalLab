@@ -942,5 +942,7 @@
   "NOAA: event codes ↗": "NOAA: event codes ↗",
   "NOAA: non-weather definitions ↗": "NOAA: non-weather definitions ↗",
   "Select a place to add its code.": "지역을 선택하여 코드를 추가하세요.",
-  "This directory covers counties and territories; see NOAA for marine codes.": "이 목록은 카운티와 영토를 포함합니다. 해역 코드는 NOAA를 참조하세요."
+  "This directory covers counties and territories; see NOAA for marine codes.": "이 목록은 카운티와 영토를 포함합니다. 해역 코드는 NOAA를 참조하세요.",
+  "Switch to dark mode": "다크 모드로 전환",
+  "Switch to light mode": "라이트 모드로 전환"
 }

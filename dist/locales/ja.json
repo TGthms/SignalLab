@@ -942,5 +942,7 @@
   "NOAA: event codes ↗": "NOAA: event codes ↗",
   "NOAA: non-weather definitions ↗": "NOAA: non-weather definitions ↗",
   "Select a place to add its code.": "場所を選択してコードを追加します。",
-  "This directory covers counties and territories; see NOAA for marine codes.": "この一覧には郡と準州が含まれます。海域コードはNOAAをご確認ください。"
+  "This directory covers counties and territories; see NOAA for marine codes.": "この一覧には郡と準州が含まれます。海域コードはNOAAをご確認ください。",
+  "Switch to dark mode": "ダークモードに切り替える",
+  "Switch to light mode": "ライトモードに切り替える"
 }
