@@ -1,3 +1,5 @@
+import {loadEventLocale} from './event-localization.mjs?v=0.1.0';
+
 const localeEntries = [
   ['en', 'English', 'ltr'],
   ['es', 'Español', 'ltr'],
@@ -45,7 +47,7 @@ const sourceAttributeValues = new WeakMap();
 const renderedAttributes = new WeakMap();
 const translatedAttributes = ['aria-label', 'aria-description', 'aria-valuetext', 'placeholder', 'title'];
 const excludedTextTags = new Set(['CODE', 'PRE', 'SCRIPT', 'STYLE', 'TEXTAREA']);
-const excludedContainers = '#result,#history-list,#earlier-receptions-list,#morse-tables,#location-summary,#location-search-results,#location-reference-list,#event-reference-list,#header-preview,#morse-code,#morse-normalized,#payload-name,#diag-input';
+const excludedContainers = '#event,#result,#history-list,#earlier-receptions-list,#morse-tables,#location-summary,#location-search-results,#location-reference-list,#event-reference-list,#header-preview,#morse-code,#morse-normalized,#payload-name,#diag-input';
 
 let activeLocale = 'en';
 let activeMessages = Object.create(null);
@@ -202,7 +204,7 @@ function detectLocale() {
 
 async function readMessages(code) {
   if (code === 'en') return Object.create(null);
-  const response = await fetch(new URL(`./locales/${code}.json?v=0.7.2`, import.meta.url));
+  const response = await fetch(new URL(`./locales/${code}.json?v=0.7.3`, import.meta.url));
   if (!response.ok) throw new Error(`Locale ${code} is not available.`);
   const value = await response.json();
   if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error(`Locale ${code} has an invalid message catalog.`);
@@ -220,6 +222,7 @@ export async function setLocale(code) {
   let messages;
   try {
     messages = await readMessages(code);
+    if (document.querySelector('#event')) await loadEventLocale(code);
   } catch {
     if (request !== localeRequest) return false;
     const selector = document.querySelector('#language');

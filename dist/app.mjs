@@ -1,5 +1,6 @@
-import {formatDate,formatNumber,formatUnit,getLocale,setLocalizedAttribute,setLocalizedParts,setLocalizedText,translate} from './i18n.mjs?v=0.7.2';
+import {formatDate,formatNumber,formatUnit,getLocale,setLocalizedAttribute,setLocalizedParts,setLocalizedText,translate} from './i18n.mjs?v=0.7.3';
 import {EAS_EVENTS,EVENT_GROUPS,eventExplanation} from './eas-events.mjs?v=0.1.0';
+import {eventTranslations} from './event-localization.mjs?v=0.1.0';
 import {lessonSignal,relativeSpectrum} from './lesson-signal.mjs?v=0.4.0';
 import {readWavInfo,readWavChunks} from './wav-reader.mjs?v=0.4.0';
 import {createReceiverLink,readReceiverLink} from './share-settings.mjs?v=0.4.0';
@@ -36,7 +37,7 @@ window.addEventListener('signal-lab-locale-change',()=>{
   const morseExample=$('#morse-example-text');
   try{$('#morse-example-code').textContent=morsePlan(morseExample.textContent,15).code;}
   catch{morseExample.textContent='HELLO WORLD';$('#morse-example-code').textContent='.... . .-.. .-.. --- / .-- --- .-. .-.. -..';}
-  renderMorseTables();updateLocations();renderLocationReference();renderHistory();renderEarlierReceptions();updateReceiverSettings();updateSensitivity();
+  renderMorseTables();updateLocations();renderLocationReference();renderEvents();renderHistory();renderEarlierReceptions();updateReceiverSettings();updateSensitivity();
   if(lastTransfer){const item=receptions.find(entry=>entry.key===activeReceptionKey);showTransfer(lastTransfer,item);}
   if($('#location-search').value.trim().length>=2)$('#location-search').dispatchEvent(new Event('input'));
   applyTheme();updatePreview();
@@ -123,14 +124,29 @@ function renderLocationReference(){
   }
 }
 $('#location-reference-state').onchange=renderLocationReference;$('#location-reference-partition').onchange=renderLocationReference;
-// FCC titles and the short study explanations are explicitly marked English.
-for(const group of EVENT_GROUPS){const section=el('section','event-reference-group'),heading=el('h4','',group.name),list=el('dl');
-  for(const code of group.codes){const entry=el('div','event-reference-entry'),term=el('dt'),description=el('dd','',eventExplanation(code));term.append(el('code','',code),document.createTextNode(` · ${EAS_EVENTS[code]}`));entry.append(term,description);list.append(entry);}
-  section.append(heading,list);$('#event-reference-list').append(section);
+// The available packs cover the reference. Other languages keep existing translated event
+// names where available and explicitly label the remaining English fallback.
+function eventName(code){const source=EAS_EVENTS[code],pack=eventTranslations[getLocale()];return pack?pack.names[code]:translate(source);}
+function eventDescription(code){
+  const pack=eventTranslations[getLocale()];if(!pack)return eventExplanation(code);
+  if(pack.descriptions[code])return pack.descriptions[code];
+  const source=EAS_EVENTS[code];return source.endsWith('Watch')?pack.watch:source.endsWith('Warning')?pack.warning:pack.statement;
 }
-// Keep the seven existing translated choices; add FCC names as an English
-// reference, marked with its language for assistive technology.
-for(const [code,name] of Object.entries(EAS_EVENTS))if(!$('#event').querySelector(`option[value="${code}"]`)){const option=el('option','',`${code} · ${name}`);option.value=code;option.lang='en';$('#event').append(option);}
+function renderEvents(){
+  const locale=getLocale(),pack=eventTranslations[locale],translated=Boolean(pack),select=$('#event'),value=select.value;
+  for(const [code,name] of Object.entries(EAS_EVENTS)){
+    let option=select.querySelector(`option[value="${code}"]`);if(!option){option=el('option');option.value=code;select.append(option);}
+    const label=eventName(code);option.textContent=`${code} · ${label}`;option.lang=locale!=='en'&&label===name?'en':locale;
+  }
+  select.value=value;
+  const root=$('#event-reference-list');root.replaceChildren();root.lang=translated?locale:'en';
+  EVENT_GROUPS.forEach((group,index)=>{const section=el('section','event-reference-group'),heading=el('h4','',translated?pack.groups[index]:group.name),list=el('dl');
+    for(const code of group.codes){const entry=el('div','event-reference-entry'),term=el('dt'),description=el('dd','',eventDescription(code));term.append(el('code','',code),document.createTextNode(` · ${translated?eventName(code):EAS_EVENTS[code]}`));entry.append(term,description);list.append(entry);}
+    section.append(heading,list);root.append(section);
+  });
+  $$('.event-english-note').forEach(note=>note.hidden=locale==='en'||translated);
+}
+renderEvents();
 $('#toggle-location-help').onclick=()=>{const details=$('#location-help');details.open=!details.open;$('#toggle-location-help').setAttribute('aria-expanded',String(details.open));};
 $('#location-help').addEventListener('toggle',()=>$('#toggle-location-help').setAttribute('aria-expanded',String($('#location-help').open)));
 $('#location-search').oninput=()=>{
@@ -566,7 +582,7 @@ function resultCard(t,at){
   }else{
     const fields=el('div','decoded-fields'),events=EAS_EVENTS;
     const names=frame.locations.map(c=>{const d=describeLocation(c,locationRows),area=d?.name?`${d.name}, ${translate(d.state||'')}`:'Unknown area';return `${c} / ${area}`;}).join('; ');
-    for(const [name,value]of [['Event',frame.event],['Originator',frame.origin],['Geographical areas',names],['Purge time',`${formatNumber(+frame.duration.slice(0,2))}h ${formatNumber(+frame.duration.slice(2))}m`],['Issued / UTC',`Day ${formatNumber(+frame.issued.slice(0,3))} / ${frame.issued.slice(3,5)}:${frame.issued.slice(5)}`],['Station ID',frame.sender]]){const d=el('div'),valueNode=el('div');if(name==='Event'){const eventName=events[value]||'Event code',description=uiEl('span','',eventName);if(getLocale()!=='en'&&translate(eventName)===eventName)description.lang='en';valueNode.append(el('span','',`${value} / `),description);}else valueNode.append(el('span','',value));d.append(uiEl('span','',name),valueNode);fields.append(d);}card.append(fields,el('div','decoded-raw',frame.raw),uiEl('div','result-meta',`${formatNumber(t.copies)}/3 matching headers / ${formatNumber(t.endCopies)}/3 end bursts / SAME has no CRC`));
+    for(const [name,value]of [['Event',frame.event],['Originator',frame.origin],['Geographical areas',names],['Purge time',`${formatNumber(+frame.duration.slice(0,2))}h ${formatNumber(+frame.duration.slice(2))}m`],['Issued / UTC',`Day ${formatNumber(+frame.issued.slice(0,3))} / ${frame.issued.slice(3,5)}:${frame.issued.slice(5)}`],['Station ID',frame.sender]]){const d=el('div'),valueNode=el('div');if(name==='Event'){const source=events[value]||'Event code',name=events[value]?eventName(value):translate(source),description=el('span','',name);if(getLocale()!=='en'&&name===source)description.lang='en';valueNode.append(el('span','',`${value} / `),description);}else valueNode.append(el('span','',value));d.append(uiEl('span','',name),valueNode);fields.append(d);}card.append(fields,el('div','decoded-raw',frame.raw),uiEl('div','result-meta',`${formatNumber(t.copies)}/3 matching headers / ${formatNumber(t.endCopies)}/3 end bursts / SAME has no CRC`));
   }
   return card;
 }

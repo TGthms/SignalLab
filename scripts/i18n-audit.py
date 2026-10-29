@@ -176,7 +176,7 @@ def main():
         for source, expected, actual in placeholder_errors:
             print(f"{source}\n  expected: {expected}\n  found:    {actual}")
         raise SystemExit(1)
-    print(f"{args.locale}: all {len(sources)} scanned page and runtime strings have catalog entries (English-language references excluded)")
+    print(f"{args.locale}: all {len(sources)} scanned page and runtime strings have catalog entries (event-reference packs checked separately)")
 
 
 if __name__ == "__main__":

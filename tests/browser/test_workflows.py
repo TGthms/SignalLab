@@ -220,6 +220,80 @@ class WorkflowTests(unittest.TestCase):
         self.assertTrue(page.locator('#event-reference-list').get_by_text('AVA', exact=True).is_visible())
         self.assertEqual(page.locator('#event-reference-list').get_attribute('lang'), 'en')
 
+    def test_spanish_event_reference_and_results(self):
+        page = self.page
+        page.locator('#language').select_option('es')
+        page.wait_for_function("document.documentElement.lang === 'es'")
+        page.locator('#same-mode').click()
+        self.assertEqual(page.locator('#event option').count(), 57)
+        page.locator('#event').select_option('AVA')
+        self.assertIn('Vigilancia de avalancha', page.locator('#event option:checked').inner_text())
+        self.assertEqual(page.locator('#event option:checked').get_attribute('lang'), 'es')
+        page.locator('#loopback').click()
+        page.locator('#result').get_by_text('Vigilancia de avalancha').wait_for(timeout=15000)
+        page.locator('.nav[data-page=learn]').click()
+        page.locator('.lesson-tabs [data-lesson=same]').click()
+        page.locator('.event-reference summary').click()
+        self.assertEqual(page.locator('#event-reference-list').get_attribute('lang'), 'es')
+        self.assertEqual(page.locator('#event-reference-list .event-reference-entry').count(), 57)
+        self.assertTrue(page.locator('#event-reference-list').get_by_text('Vigilancia de avalancha', exact=False).is_visible())
+        self.assertIn('inciertos', page.locator('#event-reference-list').inner_text())
+        page.locator('#language').select_option('fr')
+        page.wait_for_function("document.documentElement.lang === 'fr'")
+        self.assertEqual(page.locator('#event-reference-list').get_attribute('lang'), 'fr')
+        self.assertIn('Veille d’avalanche', page.locator('#event-reference-list').inner_text())
+        self.assertEqual(page.locator('#event').input_value(), 'AVA')
+        page.locator('.nav[data-page=decoder]').click()
+        self.assertIn('Veille d’avalanche', page.locator('#result').inner_text())
+        page.locator('.nav[data-page=learn]').click()
+        for code, expected in [('de', 'Lawinen-Vorwarnung'), ('it', 'Vigilanza per valanghe'), ('pt-BR', 'Vigilância de avalanche'), ('pt-PT', 'Vigilância de avalanche'), ('es', 'Vigilancia de avalancha')]:
+            page.locator('#language').select_option(code)
+            page.wait_for_function('(locale) => document.documentElement.lang === locale', arg=code)
+            self.assertEqual(page.locator('#event-reference-list').get_attribute('lang'), code)
+            self.assertIn(expected, page.locator('#event-reference-list').inner_text())
+            self.assertEqual(page.locator('#event').input_value(), 'AVA')
+        page.route('**/event-locales/ko.mjs*', lambda route: route.abort())
+        page.locator('#language').select_option('ko')
+        page.wait_for_function("document.documentElement.lang === 'ko'")
+        self.assertEqual(page.locator('#event-reference-list').get_attribute('lang'), 'en')
+        self.assertIn('Avalanche Watch', page.locator('#event-reference-list').inner_text())
+        self.assertTrue(page.locator('#lesson-same .event-english-note').first.is_visible())
+        self.assertEqual(page.locator('#event').input_value(), 'AVA')
+
+    def test_all_event_languages_and_bidirectional_layout(self):
+        page = self.page
+        page.set_viewport_size({'width': 390, 'height': 844})
+        page.locator('#same-mode').click()
+        page.locator('#event').select_option('AVA')
+        page.locator('.nav[data-page=learn]').click()
+        page.locator('.lesson-tabs [data-lesson=same]').click()
+        page.locator('.event-reference summary').click()
+        for locale in page.locator('#language option').evaluate_all('(nodes) => nodes.map(node => node.value)'):
+            page.locator('#language').select_option(locale)
+            page.wait_for_function('(code) => document.documentElement.lang === code', arg=locale)
+            self.assertEqual(page.locator('#event-reference-list').get_attribute('lang'), locale)
+            self.assertEqual(page.locator('#event-reference-list .event-reference-entry').count(), 57)
+            self.assertEqual(page.locator('#event').input_value(), 'AVA')
+            self.assertEqual(page.locator('#event option:checked').get_attribute('lang'), locale)
+            if locale != 'en':
+                reference = page.evaluate('''async (code) => {
+                    const pack = await import(`./event-locales/${code}.mjs?v=0.1.0`);
+                    const entry = [...document.querySelectorAll('#event-reference-list .event-reference-entry')]
+                        .find(node => node.querySelector('code').textContent === 'AVA');
+                    return {name: pack.names.AVA, explanation: pack.watch,
+                            shownName: entry.querySelector('dt').textContent,
+                            shownExplanation: entry.querySelector('dd').textContent};
+                }''', locale)
+                self.assertIn(reference['name'], page.locator('#event option:checked').inner_text())
+                self.assertIn(reference['name'], reference['shownName'])
+                self.assertEqual(reference['explanation'], reference['shownExplanation'])
+                self.assertFalse(page.locator('#lesson-same .event-english-note').first.is_visible())
+            for width in (320, 390):
+                page.set_viewport_size({'width': width, 'height': 844})
+                self.assertEqual(page.evaluate('document.documentElement.scrollWidth <= innerWidth'), True, (locale, width))
+            if locale in ('ar', 'he'):
+                self.assertEqual(page.locator('html').get_attribute('dir'), 'rtl')
+
     def test_phase_modes_round_trip_and_receiver_matches(self):
         page = self.page
         for mode in ('dbpsk', 'dqpsk'):

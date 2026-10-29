@@ -1,0 +1,12 @@
+// European Portuguese adaptations of the shared study terminology.
+import * as brazilian from './pt-BR.mjs?v=0.1.0';
+export const groups = ['Mensagens nacionais','Ensaios e administração','Tempo e riscos naturais','Segurança pública e outras emergências'];
+export const names = {...brazilian.names,
+ NPT:'Ensaio nacional periódico',RMT:'Ensaio mensal obrigatório',RWT:'Ensaio semanal obrigatório',BZW:'Aviso de tempestade de neve',CAE:'Emergência por rapto de criança',EQW:'Aviso de sismo',TOE:'Emergência por interrupção do serviço telefónico 911',NUW:'Aviso de central nuclear',SPW:'Aviso para abrigo no local',SSA:'Vigilância de sobreelevação do mar por tempestade',SSW:'Aviso de sobreelevação do mar por tempestade',
+};
+export const descriptions = {...brazilian.descriptions,
+ NIC:'Código de centro nacional de informações indicado pela FCC; consulte o plano aplicável para conhecer a sua utilização.',NPT:'Ensaio do sistema nacional de alerta.',RWT:'Ensaio semanal programado dos equipamentos de alerta.',RMT:'Ensaio mensal programado dos equipamentos de alerta.',NMN:'Código de notificação de mensagem de rede; o NWS indica que não está definido para os seus produtos retransmitidos.',BLU:'Informações sobre um suspeito de ataque grave a um agente policial, quando os critérios aplicáveis são cumpridos.',CAE:'Emergência relativa a uma criança desaparecida com suspeita de rapto, quando os critérios estabelecidos são cumpridos.',CEM:'Ameaça civil significativa, iminente ou em curso, à segurança pública ou aos bens.',EVI:'As autoridades competentes recomendam ou ordenam uma evacuação imediata.',FRW:'Incêndio florestal ou estrutural em propagação que ameaça uma área habitada.',HMW:'Libertação de materiais perigosos que pode exigir medidas de proteção.',LAE:'Evento local que pode interromper serviços ou evoluir para uma emergência mais grave.',TOE:'Interrupção do serviço telefónico 911 numa área identificada.',NUW:'Emergência numa central nuclear que pode exigir medidas de proteção para a população.',RHW:'Perda, descoberta ou libertação de uma fonte de perigo radiológico.',SPW:'Aviso que recomenda procurar abrigo dentro de um edifício devido a um perigo.',EQW:'Atividade sísmica em curso ou iminente.',VOW:'Atividade vulcânica em curso ou iminente.',
+};
+export const watch = 'As condições podem desenvolver-se, mas o momento ou o local continuam incertos.';
+export const warning = 'Um perigo significativo está em curso ou é esperado em breve.';
+export const statement = 'Informações de acompanhamento sobre este fenómeno.';
