@@ -16,6 +16,11 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 24
+      - name: Verify UI bundle is reproducible
+        run: |
+          npm ci
+          npm run build:ui
+          git diff --exit-code -- dist/ui-navigation.mjs dist/ui-navigation.mjs.LEGAL.txt dist/heroui.min.css dist/material-symbols.svg
       - name: Verify modem and repetition protocol
         run: |
           node tests/codec.test.mjs
@@ -33,6 +38,7 @@ jobs:
           node tests/wav-reader.test.mjs
           node tests/learning-share.test.mjs
           node tests/eas-study.test.mjs
+          node tests/eas-events.test.mjs
           npm run check
       - uses: actions/setup-python@v5
         with:

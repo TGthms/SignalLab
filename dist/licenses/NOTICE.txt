@@ -1,0 +1,9 @@
+Signal Lab bundles the following third-party components:
+
+HeroUI and HeroUI Styles, Copyright HeroUI contributors, Apache License 2.0.
+React Aria Components and related Adobe libraries, Copyright Adobe, Apache License 2.0.
+Material Symbols, Copyright Google LLC, Apache License 2.0.
+React, React DOM, and Scheduler, Copyright Meta Platforms, Inc. and affiliates, MIT License.
+
+The accompanying license texts apply. Additional bundled license annotations are
+included in ../ui-navigation.mjs.LEGAL.txt.

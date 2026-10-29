@@ -4,3 +4,4 @@
 __pycache__/
 *.pyc
 archive/
+node_modules/

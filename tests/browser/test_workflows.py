@@ -49,6 +49,38 @@ class WorkflowTests(unittest.TestCase):
     def tearDown(self):
         self.page.close()
 
+    def test_component_navigation_keyboard_and_language(self):
+        page = self.page
+        decoder = page.locator('.nav[data-page=decoder]')
+        self.assertEqual(decoder.get_attribute('data-slot'), 'button')
+        decoder.focus()
+        decoder.press('Space')
+        self.assertTrue(page.locator('#page-decoder').is_visible())
+        self.assertEqual(decoder.get_attribute('aria-current'), 'page')
+        page.locator('#language').select_option('fr')
+        page.wait_for_function("document.documentElement.lang === 'fr'")
+        catalog = json.loads((ROOT / 'locales/fr.json').read_text())
+        self.assertEqual(decoder.inner_text().strip(), catalog['Decoder'])
+        page.locator('.nav[data-page=encoder]').focus()
+        page.locator('.nav[data-page=encoder]').press('Enter')
+        self.assertTrue(page.locator('#page-encoder').is_visible())
+        page.locator('#same-mode').focus()
+        page.locator('#same-mode').press('Space')
+        self.assertTrue(page.locator('#same-fields').is_visible())
+        self.assertTrue(page.locator('#export').is_hidden())
+        page.locator('#custom-mode').focus()
+        page.locator('#custom-mode').press('Enter')
+        self.assertTrue(page.locator('#custom-fields').is_visible())
+
+    def test_navigation_still_works_if_component_bundle_is_unavailable(self):
+        page = self.page
+        page.route('**/ui-navigation.mjs*', lambda route: route.abort())
+        page.reload()
+        page.wait_for_function("location.hash === '#encoder'")
+        page.locator('.nav[data-page=decoder]').focus()
+        page.locator('.nav[data-page=decoder]').press('Space')
+        self.assertTrue(page.locator('#page-decoder').is_visible())
+
     def test_demo_preserves_draft_and_settings(self):
         page = self.page
         page.get_by_role('textbox', name='Message').fill('Keep this draft')

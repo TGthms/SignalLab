@@ -51,7 +51,7 @@ Embedded browsers can impose additional permission or audio restrictions. Open t
 
 ## Development and checks
 
-No build step or npm dependencies are needed. `npm start` launches the local Python server; `npm test` runs all checks below. Node.js 24 is used in CI:
+The checked-in `dist/` runs without a build step. `npm start` launches the local Python server; `npm test` runs the signal checks below. The navigation and protocol selector use HeroUI React buttons, and icons use locally bundled Material Symbols. To change those components, run `npm ci` followed by `npm run build:ui` and commit the regenerated files in `dist/`. Node.js 24 is used in CI:
 
 ```sh
 node tests/codec.test.mjs
@@ -82,6 +82,7 @@ The NOAA location directory is a dated snapshot and includes legacy entries. Nam
 - `dist/custom-stream.mjs`, `dist/custom-worklet.mjs`: incremental modulation, WAV encoding, and streamed playback.
 - `dist/demo.mjs`: independent example waveform generation.
 - `dist/style.css`, `dist/design.css`: component styles and the visual design layer.
+- `ui/`: HeroUI component source and reproducible build for the checked-in browser bundle and Material Symbols sprite.
 - `dist/codec.mjs`: modulation, streaming demodulation, CRC, and framing.
 - `dist/transfers.mjs`: custom repetition verification and SAME burst grouping.
 - `dist/wav-reader.mjs`: bounded uncompressed WAV import.

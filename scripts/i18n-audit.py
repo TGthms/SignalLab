@@ -107,7 +107,7 @@ def error_sources():
     token = re.compile(r"'(?:\\.|[^'\\])*'|\"(?:\\.|[^\"\\])*\"|`(?:\\.|[^`\\])*`", re.S)
     error_prefix = re.compile(r"(?:throw\s+(?:new\s+)?Error|reject\(Error|finish\(Error|new\s+DOMException)\s*\($")
     for module in MODULES:
-        if module.name == "i18n.mjs":
+        if module.name in {"i18n.mjs", "ui-navigation.mjs"}:
             continue
         source = module.read_text(encoding="utf-8")
         for match in token.finditer(source):

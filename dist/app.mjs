@@ -71,7 +71,8 @@ function showPage(next){
   updateInspector();updateLayout();if(page==='encoder'&&!listening&&!playing)updatePreview();requestAnimationFrame(drawScope);
 }
 function openLesson(next){lesson=['modem','verification','same','morse','reception'].includes(next)?next:'modem';$$('.lesson').forEach(n=>n.hidden=n.id!==`lesson-${lesson}`);$$('.lesson-tabs [data-lesson]').forEach(n=>{const selected=n.dataset.lesson===lesson;n.classList.toggle('selected',selected);n.setAttribute('aria-pressed',String(selected));});showPage('learn');if(lesson==='modem')updateExperiment();}
-$$('[data-page]').forEach(n=>n.onclick=()=>showPage(n.dataset.page));
+function bindPress(node,handler){if(node.dataset.slot==='button')node.addEventListener('signal-lab-press',handler);else node.onclick=handler;}
+$$('[data-page]').forEach(n=>bindPress(n,()=>showPage(n.dataset.page)));
 $('.brand').onclick=e=>{e.preventDefault();showPage('encoder');window.scrollTo(0,0);};
 $$('[data-lesson]').forEach(n=>n.onclick=()=>openLesson(n.dataset.lesson));
 function openDeviceGuide(){openLesson('modem');const details=$('#device-research');details.open=true;details.scrollIntoView({block:'start'});}
@@ -157,7 +158,7 @@ $('#location-search').oninput=()=>{
 $('#copy-header').onclick=()=>{try{copyText(currentHeader());}catch(e){toast(err(e),true);}};
 
 function setMode(next){if(playing)stopPlayback();mode=next;$('#custom-fields').hidden=mode!=='custom';$('#same-fields').hidden=mode!=='same';$('#morse-fields').hidden=mode!=='morse';$('#same-legal-reminder').hidden=mode!=='same';$('#export').hidden=mode==='same';$('#transmit-actions').classList.toggle('same-actions',mode==='same');$('#loopback').classList.toggle('primary',mode==='same');$('#loopback').classList.toggle('secondary',mode!=='same');$('#play').classList.toggle('secondary',mode==='same');$('#play').classList.toggle('primary',mode!=='same');$('#play-label').textContent=mode==='same'?'Play tones':'Transmit';['custom','same','morse'].forEach(m=>{const n=$(`#${m}-mode`);n.classList.toggle('selected',m===mode);n.setAttribute('aria-pressed',String(m===mode));});updateInspector();updatePreview();}
-$('#custom-mode').onclick=()=>setMode('custom');$('#same-mode').onclick=()=>setMode('same');$('#morse-mode').onclick=()=>setMode('morse');
+bindPress($('#custom-mode'),()=>setMode('custom'));bindPress($('#same-mode'),()=>setMode('same'));bindPress($('#morse-mode'),()=>setMode('morse'));
 function setKind(next){if(kind!=='file')drafts[kind]=$('#message').value;kind=next;$$('[data-kind]').forEach(n=>{n.classList.toggle('active',n.dataset.kind===kind);n.setAttribute('aria-pressed',String(n.dataset.kind===kind));});$('#text-editor').hidden=kind==='file';$('#file-editor').hidden=kind!=='file';if(kind!=='file')$('#message').value=drafts[kind];$('#encoding-label').textContent=kind==='json'?'JSON / UTF-8':'UTF-8';$('#payload-label').textContent=kind==='json'?'JSON':kind==='file'?'File':'Message';updatePreview();}
 $$('[data-kind]').forEach(n=>n.onclick=()=>setKind(n.dataset.kind));
 $$('[data-repeat]').forEach(n=>n.onclick=()=>{$('#repeat').value=n.dataset.repeat;$$('[data-repeat]').forEach(b=>{b.classList.toggle('selected',b===n);b.setAttribute('aria-pressed',String(b===n));});updatePreview();});
