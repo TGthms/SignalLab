@@ -6,7 +6,10 @@ const nodes=new Map();
 function $(selector){if(!nodes.has(selector)){const classes=new Set();nodes.set(selector,{hidden:false,disabled:false,textContent:'',classList:{toggle(name,enabled){if(enabled)classes.add(name);else classes.delete(name);},contains(name){return classes.has(name);}},attributes:{},setAttribute(key,value){this.attributes[key]=value;}});}return nodes.get(selector);}
 let downloads=0,warning='';
 const context=vm.createContext({$,mode:'custom',playing:false,exporting:false,stopPlayback(){},updateInspector(){},updatePreview(){},toast(message){warning=message;},download(){downloads++;}});
-const modeCode=app.slice(app.indexOf('function setMode('),app.indexOf("$('#custom-mode').onclick"));
+const modeStart=app.indexOf('function setMode(');
+const modeEnd=app.indexOf("\nbindPress($('#custom-mode')",modeStart);
+assert(modeStart>=0 && modeEnd>modeStart,'Could not locate the mode implementation');
+const modeCode=app.slice(modeStart,modeEnd);
 const exportCode=app.slice(app.indexOf("$('#export').onclick=async()=>"),app.indexOf("\nwindow.addEventListener('keydown'"));
 vm.runInContext(modeCode+'\n'+exportCode,context);
 vm.runInContext("setMode('same')",context);
