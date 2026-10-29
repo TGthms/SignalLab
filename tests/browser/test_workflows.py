@@ -326,6 +326,23 @@ class WorkflowTests(unittest.TestCase):
             if locale in ('ar', 'he'):
                 self.assertEqual(page.locator('html').get_attribute('dir'), 'rtl')
 
+    def test_encoder_names_exact_receiver_signal(self):
+        page = self.page
+        choices = [('bfsk', '1800', 'bfsk'), ('dbpsk', '1800', 'dbpsk:1800'),
+                   ('dbpsk', '20500', 'dbpsk:20500'), ('dqpsk', '1800', 'dqpsk:1800'),
+                   ('dqpsk', '20500', 'dqpsk:20500')]
+        page.locator('.transmission-settings summary').click()
+        for locale in ('en', 'fr', 'ar'):
+            page.locator('#language').select_option(locale)
+            page.wait_for_function('(code) => document.documentElement.lang === code', arg=locale)
+            for modulation, carrier, value in choices:
+                page.locator('#modulation').select_option(modulation)
+                if modulation != 'bfsk':
+                    page.locator('#carrier').select_option(carrier)
+                page.wait_for_function("([value]) => document.querySelector('#receiver-choice').textContent === document.querySelector(`#rx-signal option[value=\"${value}\"]`).textContent", arg=[value])
+                self.assertTrue(page.locator('.receiver-choice-help').is_visible())
+                self.assertTrue(page.evaluate('document.documentElement.scrollWidth <= innerWidth'))
+
     def test_phase_modes_round_trip_and_receiver_matches(self):
         page = self.page
         for mode in ('dbpsk', 'dqpsk'):
