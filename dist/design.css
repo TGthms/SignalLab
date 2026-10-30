@@ -164,12 +164,6 @@ footer{font-size:11px;letter-spacing:0}
 .morse-hint{font-size:13px;color:var(--muted);line-height:1.5;margin:8px 0 0}
 .morse-hint .text-button{font-size:13px}
 
-@media(max-width:480px){.transmitter:has(#custom-fields:not([hidden])) .transmit-actions{position:sticky;bottom:8px;z-index:3;flex-wrap:nowrap;padding:8px;background:var(--surface);border:1px solid var(--line);border-radius:7px;box-shadow:0 4px 16px #0003}
-.transmit-actions .primary,.transmit-actions .secondary{flex:1 1 0;min-width:0;padding:10px 5px;font-size:12px;white-space:normal;text-align:center}
-.transmit-actions .primary{flex-grow:1.15}
-.transmit-actions .secondary svg{display:none}
-.transmit-actions .loopback{flex-grow:1.25}
-}
 
 
 .result-source{font-size:13px;color:var(--muted);margin:0 0 10px}
