@@ -107,10 +107,19 @@ class WorkflowTests(unittest.TestCase):
     def test_mobile_actions_and_result_remain_reachable(self):
         page = self.page
         self.assertEqual(page.evaluate('document.documentElement.scrollWidth <= innerWidth'), True)
-        button = page.get_by_role('button', name='Transmit')
-        box = button.bounding_box()
-        self.assertIsNotNone(box)
-        self.assertLessEqual(box['y'] + box['height'], 844)
+        actions = page.locator('#transmit-actions')
+        self.assertEqual(actions.evaluate('(element) => getComputedStyle(element).position'), 'static')
+        self.assertGreater(actions.bounding_box()['y'], 844)
+        actions.scroll_into_view_if_needed()
+        for selector in ('#play', '#export', '#loopback'):
+            box = page.locator(selector).bounding_box()
+            self.assertIsNotNone(box)
+            self.assertGreaterEqual(box['width'], 44)
+            self.assertGreaterEqual(box['height'], 44)
+            self.assertGreaterEqual(box['y'], 0)
+            self.assertLessEqual(box['y'] + box['height'], 844)
+        page.evaluate('window.scrollTo(0, 0)')
+        self.assertGreater(actions.bounding_box()['y'], 844)
         page.get_by_role('button', name='Test in decoder').click()
         page.locator('#result').get_by_text('Hello from the other side of the room. 🌊').wait_for()
         self.assertTrue(page.locator('#result').is_visible())
