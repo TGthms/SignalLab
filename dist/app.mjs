@@ -234,6 +234,14 @@ $('.share-settings').addEventListener('toggle',()=>{if($('.share-settings').open
 $('#signal-standard').onclick=()=>{$('#modulation').value='bfsk';$('#carrier').value='1800';updatePreview();};
 $('#signal-high').onclick=()=>{if($('#modulation').value==='bfsk')$('#modulation').value='dbpsk';$('#carrier').value='20500';updatePreview();};
 $$('#morse-message,#morse-wpm,#message,#profile,#modulation,#carrier,#origin,#event,#locations,#duration,#sender,#issued,#auto-time,#attention,#speak,#announcement').forEach(n=>n.addEventListener('input',()=>{if(n.id==='morse-wpm'&&!listening){$('#morse-rx-wpm').value=n.value;updateReceiverSettings();}if(n.id==='auto-time')updateUTC();if(n.id==='locations')updateLocations();clearTimeout(previewTimer);previewTimer=setTimeout(updatePreview,120);}));
+// Safari does not consistently restore focus when a native dialog closes.
+for(const [dialogSelector,triggerSelector] of [['#eas-play-dialog','#play'],['#eas-attention-dialog','#attention']]){
+  const dialog=$(dialogSelector),trigger=$(triggerSelector);
+  dialog.addEventListener('close',()=>{
+    const active=document.activeElement;
+    if(page==='encoder'&&mode==='same'&&!$('#eas-play-dialog').open&&!$('#eas-attention-dialog').open&&(active===document.body||dialog.contains(active)))trigger.focus({preventScroll:true});
+  });
+}
 // Selecting the signal must not play it; only an explicit confirmation enables it.
 $('#attention').onchange=()=>{
   if(!$('#attention').checked)return;

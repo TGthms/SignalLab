@@ -560,6 +560,41 @@ await writeFile(process.argv[1],new Uint8Array(wav(audio,sr)));"""
         self.assertFalse(dialog.is_visible())
         self.assertEqual(page.evaluate('window.__testAudioStarts'), 1)
 
+    def test_eas_dialogs_are_centered_and_usable_at_different_sizes(self):
+        page = self.page
+        for width, height, language in [(1440, 900, 'en'), (390, 844, 'ar'), (320, 360, 'en')]:
+            with self.subTest(width=width, height=height, language=language):
+                page.set_viewport_size({'width': width, 'height': height})
+                page.locator('#language').select_option(language)
+                page.locator('#same-mode').click()
+                page.locator('#play').focus()
+                page.locator('#play').click()
+                for selector, trigger in [
+                    ('#eas-play-dialog', '#play'),
+                    ('#eas-attention-dialog', '#attention'),
+                ]:
+                    if selector == '#eas-attention-dialog':
+                        page.locator('#attention').evaluate("el => { el.closest('details').open = true; }")
+                        page.locator(trigger).focus()
+                        page.locator(trigger).click()
+                    dialog = page.locator(selector)
+                    dialog.wait_for(state='visible')
+                    box = dialog.bounding_box()
+                    self.assertAlmostEqual(box['x'] + box['width'] / 2, width / 2, delta=1)
+                    self.assertAlmostEqual(box['y'] + box['height'] / 2, height / 2, delta=1)
+                    self.assertGreaterEqual(box['x'], 15)
+                    self.assertGreaterEqual(box['y'], 15)
+                    self.assertLessEqual(box['x'] + box['width'], width - 15)
+                    self.assertLessEqual(box['y'] + box['height'], height - 15)
+                    self.assertEqual(dialog.evaluate('(el) => el.scrollWidth <= el.clientWidth'), True)
+                    for button in dialog.locator('button').all():
+                        button.scroll_into_view_if_needed()
+                        self.assertGreaterEqual(button.bounding_box()['height'], 44)
+                        self.assertEqual(button.evaluate('(el) => el.scrollWidth <= el.clientWidth'), True)
+                    page.keyboard.press('Escape')
+                    self.assertFalse(dialog.is_visible())
+                    page.wait_for_function('(selector) => document.activeElement === document.querySelector(selector)', arg=trigger)
+
     def test_attention_signal_confirmation_is_silent(self):
         page = self.page
         page.get_by_role('button', name='EAS / SAME', exact=True).click()
